@@ -2,8 +2,6 @@ package routes
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -75,8 +73,5 @@ func (r *Router) Invoke(event events.APIGatewayV2HTTPRequest, ctx context.Contex
 			return resp
 		}
 	}
-	return translateError(&exceptions.ServiceError{
-		StatusCode: 404,
-		Cause:      errors.New(fmt.Sprintf("No route exists for %s", event.RawPath)),
-	})
+	return translateError(exceptions.NotFound("route", event.RawPath))
 }

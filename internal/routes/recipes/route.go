@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"philcali.me/recipes/internal/data"
 	"philcali.me/recipes/internal/exceptions"
 	"philcali.me/recipes/internal/routes"
+	"philcali.me/recipes/internal/routes/util"
 )
 
 type Ingrediant struct {
@@ -81,6 +83,11 @@ func NewRoute(data data.RecipeDataService) routes.Service {
 	}
 }
 
+func _getRecipeId(event events.APIGatewayV2HTTPRequest) string {
+	parts := strings.Split(event.RawPath, "/")
+	return parts[len(parts)-1]
+}
+
 func (rs *RecipeService) GetRoutes() map[string]routes.Route {
 	return map[string]routes.Route{
 		"GET:/recipes":        rs.ListRecipes,
@@ -107,26 +114,12 @@ func (rs *RecipeService) ListRecipes(event events.APIGatewayV2HTTPRequest, ctx c
 		Limit:     limit,
 		NextToken: nextToken,
 	})
-	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
-	}
-	body, err := json.Marshal(items)
-	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
-	}
-	headers := map[string]string{
-		"Content-Type":   "application/json",
-		"Content-Length": strconv.Itoa(len(body)),
-	}
-	return events.APIGatewayV2HTTPResponse{
-		StatusCode: 200,
-		Headers:    headers,
-		Body:       string(body),
-	}, nil
+	return util.SerializeResponseOK(util.ConvertQueryResultsPartial(NewRecipe), items, err)
 }
 
 func (rs *RecipeService) GetRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return events.APIGatewayV2HTTPResponse{}, nil
+	item, err := rs.data.GetRecipe(event.RequestContext.AccountID, _getRecipeId(event))
+	return util.SerializeResponseOK(NewRecipe, item, err)
 }
 
 func (rs *RecipeService) CreateRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
@@ -136,28 +129,19 @@ func (rs *RecipeService) CreateRecipe(event events.APIGatewayV2HTTPRequest, ctx 
 	}
 	accountId := event.RequestContext.AccountID
 	created, err := rs.data.CreateRecipe(accountId, input.ToData())
-	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
-	}
-	body, err := json.Marshal(NewRecipe(created))
-	if err != nil {
-		return events.APIGatewayV2HTTPResponse{}, err
-	}
-	headers := map[string]string{
-		"Content-Type":   "application/json",
-		"Content-Length": strconv.Itoa(len(body)),
-	}
-	return events.APIGatewayV2HTTPResponse{
-		StatusCode: 200,
-		Headers:    headers,
-		Body:       string(body),
-	}, nil
+	return util.SerializeResponseOK(NewRecipe, created, err)
 }
 
 func (rs *RecipeService) UpdateRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return events.APIGatewayV2HTTPResponse{}, nil
+	input := RecipeInput{}
+	if err := json.Unmarshal([]byte(event.Body), &input); err != nil {
+		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
+	}
+	item, err := rs.data.UpdateRecipe(event.RequestContext.AccountID, _getRecipeId(event), input.ToData())
+	return util.SerializeResponseOK(NewRecipe, item, err)
 }
 
 func (rs *RecipeService) DeleteRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return events.APIGatewayV2HTTPResponse{}, nil
+	err := rs.data.DeleteRecipe(event.RequestContext.AccountID, _getRecipeId(event))
+	return util.SerializeResponseNoContent(err)
 }
