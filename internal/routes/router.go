@@ -61,7 +61,7 @@ func (r *Router) Invoke(event events.APIGatewayV2HTTPRequest, ctx context.Contex
 			continue
 		}
 		regexPath := strings.ReplaceAll(path, ":id", "[^/]+")
-		reg, err := regexp.Compile(regexPath)
+		reg, err := regexp.Compile("^" + regexPath + "$")
 		if err != nil {
 			return translateError(err)
 		}

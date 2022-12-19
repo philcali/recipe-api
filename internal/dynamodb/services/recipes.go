@@ -41,17 +41,17 @@ func getKey(dto data.RecipeDTO) (map[string]types.AttributeValue, error) {
 	return map[string]types.AttributeValue{"PK": pk, "SK": sk}, nil
 }
 
-func getPrimaryKey(accountId string) string {
+func _getPrimaryKey(accountId string) string {
 	return fmt.Sprintf("%s:Recipe", accountId)
 }
 
-func encodeNextToken(token []byte) []byte {
+func _encodeNextToken(token []byte) []byte {
 	enc := make([]byte, base64.StdEncoding.EncodedLen(len(token)))
 	base64.StdEncoding.Encode(enc, token)
 	return enc
 }
 
-func decodeNextToken(encToken []byte) ([]byte, error) {
+func _decodeNextToken(encToken []byte) ([]byte, error) {
 	dec := make([]byte, base64.StdEncoding.DecodedLen(len(encToken)))
 	n, err := base64.StdEncoding.Decode(dec, encToken)
 	if err != nil {
@@ -60,10 +60,10 @@ func decodeNextToken(encToken []byte) ([]byte, error) {
 	return dec[:n], err
 }
 
-func convertLastKeyToToken(lastKey map[string]types.AttributeValue) ([]byte, error) {
+func _convertLastKeyToToken(lastKey map[string]types.AttributeValue) ([]byte, error) {
 	var bytes []byte
 	var err error
-	if len(lastKey) == 0 {
+	if lastKey == nil || len(lastKey) == 0 {
 		return bytes, nil
 	}
 	token := make(data.NextToken, len(lastKey))
@@ -81,13 +81,16 @@ func convertLastKeyToToken(lastKey map[string]types.AttributeValue) ([]byte, err
 		token[key] = innerMap
 	}
 	if bytes, err = json.Marshal(token); err == nil {
-		bytes = encodeNextToken(bytes)
+		bytes = _encodeNextToken(bytes)
 	}
 	return bytes, err
 }
 
-func convertTokenToLastKey(token []byte) (map[string]types.AttributeValue, error) {
-	decToken, err := decodeNextToken(token)
+func _convertTokenToLastKey(token []byte) (map[string]types.AttributeValue, error) {
+	if token == nil || len(token) == 0 {
+		return nil, nil
+	}
+	decToken, err := _decodeNextToken(token)
 	if err != nil {
 		return nil, err
 	}
@@ -118,22 +121,24 @@ func convertTokenToLastKey(token []byte) (map[string]types.AttributeValue, error
 }
 
 func (rs *RecipeDynamoDBService) ListRecipes(accountId string, params data.QueryParams) (data.QueryResults[data.RecipeDTO], error) {
-	keyEx := expression.Key("PK").Equal(expression.Value(getPrimaryKey(accountId)))
+	keyEx := expression.Key("PK").Equal(expression.Value(_getPrimaryKey(accountId)))
 	expr, err := expression.NewBuilder().WithKeyCondition(keyEx).Build()
 	if err != nil {
 		return data.QueryResults[data.RecipeDTO]{}, err
 	}
 	var items []data.RecipeDTO
 	var startKey map[string]types.AttributeValue
-	startKey, err = convertTokenToLastKey(params.NextToken)
+	startKey, err = _convertTokenToLastKey(params.NextToken)
 	if err != nil {
 		return data.QueryResults[data.RecipeDTO]{}, err
 	}
 	output, err := rs.DynamoDB.Query(context.TODO(), &dynamodb.QueryInput{
-		TableName:              aws.String(rs.TableName),
-		Limit:                  params.GetLimit(),
-		KeyConditionExpression: expr.KeyCondition(),
-		ExclusiveStartKey:      startKey,
+		TableName:                 aws.String(rs.TableName),
+		Limit:                     params.GetLimit(),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ExclusiveStartKey:         startKey,
 	})
 	if err != nil {
 		return data.QueryResults[data.RecipeDTO]{}, err
@@ -142,7 +147,7 @@ func (rs *RecipeDynamoDBService) ListRecipes(accountId string, params data.Query
 	if err != nil {
 		return data.QueryResults[data.RecipeDTO]{}, err
 	}
-	token, err := convertLastKeyToToken(output.LastEvaluatedKey)
+	token, err := _convertLastKeyToToken(output.LastEvaluatedKey)
 	if err != nil {
 		return data.QueryResults[data.RecipeDTO]{}, err
 	}
@@ -153,7 +158,7 @@ func (rs *RecipeDynamoDBService) ListRecipes(accountId string, params data.Query
 }
 
 func (rs *RecipeDynamoDBService) GetRecipe(accountId string, recipeId string) (data.RecipeDTO, error) {
-	shim := data.RecipeDTO{PK: getPrimaryKey(accountId), SK: recipeId}
+	shim := data.RecipeDTO{PK: _getPrimaryKey(accountId), SK: recipeId}
 	key, err := getKey(shim)
 	if err != nil {
 		return shim, err
@@ -179,47 +184,60 @@ func (rs *RecipeDynamoDBService) CreateRecipe(accountId string, input data.Recip
 	}
 	now := time.Now()
 	shim := data.RecipeDTO{
-		PK:           getPrimaryKey(accountId),
-		SK:           gid.String(),
-		Name:         *input.Name,
-		Instructions: *input.Instructions,
-		Ingrediants:  *input.Ingrediants,
-		PrepareTime:  *input.PrepareTime,
-		CreateTime:   now,
-		UpdateTime:   now,
+		PK:                 _getPrimaryKey(accountId),
+		SK:                 gid.String(),
+		Name:               *input.Name,
+		Instructions:       *input.Instructions,
+		Ingredients:        *input.Ingredients,
+		PrepareTimeMinutes: input.PrepareTimeMinutes,
+		CreateTime:         now,
+		UpdateTime:         now,
 	}
 	item, err := attributevalue.MarshalMap(shim)
 	if err != nil {
 		return shim, err
 	}
+	expr, err := expression.NewBuilder().WithCondition(expression.Name("PK").AttributeNotExists().And(expression.Name("SK").AttributeNotExists())).Build()
+	if err != nil {
+		return shim, err
+	}
 	_, err = rs.DynamoDB.PutItem(context.TODO(), &dynamodb.PutItemInput{
-		Item:      item,
-		TableName: aws.String(rs.TableName),
+		Item:                     item,
+		TableName:                aws.String(rs.TableName),
+		ConditionExpression:      expr.Condition(),
+		ExpressionAttributeNames: expr.Names(),
 	})
+	if err != nil {
+		if _, ok := err.(*types.ConditionalCheckFailedException); ok {
+			return shim, exceptions.Conflict("recipe", shim.SK)
+		}
+		return shim, err
+	}
 	return shim, err
 }
 
 func (rs *RecipeDynamoDBService) UpdateRecipe(accountId string, recipeId string, input data.RecipeInputDTO) (data.RecipeDTO, error) {
-	shim := data.RecipeDTO{PK: getPrimaryKey(accountId), SK: recipeId}
+	shim := data.RecipeDTO{PK: _getPrimaryKey(accountId), SK: recipeId}
 	key, err := getKey(shim)
 	if err != nil {
 		return shim, err
 	}
 	updateTime := time.Now()
 	update := expression.Set(expression.Name("updateTime"), expression.Value(updateTime))
+	condition := expression.Name("PK").AttributeExists().And(expression.Name("SK").AttributeExists())
 	if input.Name != nil {
 		update.Set(expression.Name("name"), expression.Value(input.Name))
 	}
 	if input.Instructions != nil {
 		update.Set(expression.Name("instructions"), expression.Value(input.Instructions))
 	}
-	if input.Ingrediants != nil {
-		update.Set(expression.Name("ingrediants"), expression.Value(input.Ingrediants))
+	if input.Ingredients != nil {
+		update.Set(expression.Name("ingredients"), expression.Value(input.Ingredients))
 	}
-	if input.PrepareTime != nil {
-		update.Set(expression.Name("prepareTime"), expression.Value(input.PrepareTime))
+	if input.PrepareTimeMinutes != nil {
+		update.Set(expression.Name("prepareTimeMinutes"), expression.Value(input.PrepareTimeMinutes))
 	}
-	expr, err := expression.NewBuilder().WithUpdate(update).Build()
+	expr, err := expression.NewBuilder().WithCondition(condition).WithUpdate(update).Build()
 	if err != nil {
 		return shim, err
 	}
@@ -229,9 +247,13 @@ func (rs *RecipeDynamoDBService) UpdateRecipe(accountId string, recipeId string,
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		UpdateExpression:          expr.Update(),
+		ConditionExpression:       expr.Condition(),
 		ReturnValues:              types.ReturnValueAllNew,
 	})
 	if err != nil {
+		if _, ok := err.(*types.ConditionalCheckFailedException); ok {
+			return shim, exceptions.NotFound("recipe", recipeId)
+		}
 		return shim, err
 	}
 	err = attributevalue.UnmarshalMap(response.Attributes, &shim)
@@ -239,7 +261,7 @@ func (rs *RecipeDynamoDBService) UpdateRecipe(accountId string, recipeId string,
 }
 
 func (rs *RecipeDynamoDBService) DeleteRecipe(accountId string, recipeId string) error {
-	shim := data.RecipeDTO{PK: getPrimaryKey(accountId), SK: recipeId}
+	shim := data.RecipeDTO{PK: _getPrimaryKey(accountId), SK: recipeId}
 	key, err := getKey(shim)
 	if err != nil {
 		return err

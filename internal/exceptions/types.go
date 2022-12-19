@@ -16,6 +16,29 @@ type RequestError interface {
 	Error() string
 }
 
+type ConflictError struct {
+	Resource string
+	Id       string
+}
+
+func (ce *ConflictError) Error() string {
+	return fmt.Sprintf("Found conflicting %s with id: %s", ce.Resource, ce.Id)
+}
+
+func (ce *ConflictError) ToServiceError() *ServiceError {
+	return &ServiceError{
+		StatusCode: 409,
+		Cause:      ce,
+	}
+}
+
+func Conflict(resource string, id string) *ConflictError {
+	return &ConflictError{
+		Resource: resource,
+		Id:       id,
+	}
+}
+
 type NotFoundError struct {
 	Resource string
 	Id       string

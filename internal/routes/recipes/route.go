@@ -14,7 +14,7 @@ import (
 	"philcali.me/recipes/internal/routes/util"
 )
 
-type Ingrediant struct {
+type Ingredient struct {
 	Name        string `json:"name"`
 	Measurement string `json:"measurement"`
 }
@@ -22,25 +22,26 @@ type Ingrediant struct {
 type RecipeInput struct {
 	Name            *string       `json:"name"`
 	Instructions    *string       `json:"instructions"`
-	PreparationTime *time.Time    `json:"preparationTime"`
-	Ingrediants     *[]Ingrediant `json:"ingrediants"`
+	PreparationTime *int          `json:"preparationTime"`
+	Ingredients     *[]Ingredient `json:"ingredients"`
 }
 
 func (r *RecipeInput) ToData() data.RecipeInputDTO {
-	var ingredients []data.IngrediantDTO
-	if r.Ingrediants != nil {
-		for _, id := range *r.Ingrediants {
-			ingredients = append(ingredients, data.IngrediantDTO{
+	var ingredients []data.IngredientDTO
+	if r.Ingredients != nil {
+		ingredients = make([]data.IngredientDTO, len(*r.Ingredients))
+		for i, id := range *r.Ingredients {
+			ingredients[i] = data.IngredientDTO{
 				Name:        id.Name,
 				Measurement: id.Measurement,
-			})
+			}
 		}
 	}
 	return data.RecipeInputDTO{
-		Name:         r.Name,
-		Instructions: r.Instructions,
-		Ingrediants:  &ingredients,
-		PrepareTime:  r.PreparationTime,
+		Name:               r.Name,
+		Instructions:       r.Instructions,
+		Ingredients:        &ingredients,
+		PrepareTimeMinutes: r.PreparationTime,
 	}
 }
 
@@ -48,28 +49,31 @@ type Recipe struct {
 	Id           string       `json:"recipeId"`
 	Name         string       `json:"name"`
 	Instructions string       `json:"instructions"`
-	PrepareTime  *time.Time   `json:"prepareTime"`
-	Ingrediants  []Ingrediant `json:"ingrediants"`
+	PrepareTime  *int         `json:"prepareTimeMinutes"`
+	Ingredients  []Ingredient `json:"ingredients"`
 	CreateTime   time.Time    `json:"createTime"`
 	UpdateTime   time.Time    `json:"updateTime"`
 }
 
 func NewRecipe(recipe data.RecipeDTO) Recipe {
-	var ingrediants []Ingrediant
-	for _, id := range recipe.Ingrediants {
-		ingrediants = append(ingrediants, Ingrediant{
-			Name:        id.Name,
-			Measurement: id.Measurement,
-		})
+	var ingredients []Ingredient
+	if recipe.Ingredients != nil {
+		ingredients = make([]Ingredient, len(recipe.Ingredients))
+		for i, id := range recipe.Ingredients {
+			ingredients[i] = Ingredient{
+				Name:        id.Name,
+				Measurement: id.Measurement,
+			}
+		}
 	}
 	return Recipe{
 		Id:           recipe.SK,
 		Name:         recipe.Name,
 		CreateTime:   recipe.CreateTime,
 		UpdateTime:   recipe.UpdateTime,
-		PrepareTime:  &recipe.PrepareTime,
+		PrepareTime:  recipe.PrepareTimeMinutes,
 		Instructions: recipe.Instructions,
-		Ingrediants:  ingrediants,
+		Ingredients:  ingredients,
 	}
 }
 

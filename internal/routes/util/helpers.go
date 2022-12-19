@@ -41,19 +41,19 @@ func SerializeResponseNoContent(err error) (events.APIGatewayV2HTTPResponse, err
 }
 
 func ConvertQueryResults[D interface{}, R interface{}](items data.QueryResults[D], thunk func(D) R) data.QueryResults[R] {
-	var newResults data.QueryResults[R]
-	oldItems := items.Items
-	if oldItems != nil {
-		newItems := make([]R, len(oldItems))
-		for i, rd := range oldItems {
+	if items.Items != nil {
+		newItems := make([]R, len(items.Items))
+		for i, rd := range items.Items {
 			newItems[i] = thunk(rd)
 		}
-		newResults = data.QueryResults[R]{
+		return data.QueryResults[R]{
 			Items:     newItems,
 			NextToken: items.NextToken,
 		}
 	}
-	return newResults
+	return data.QueryResults[R]{
+		Items: make([]R, 0),
+	}
 }
 
 func ConvertQueryResultsPartial[D interface{}, R interface{}](thunk func(D) R) func(data.QueryResults[D]) data.QueryResults[R] {

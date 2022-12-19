@@ -4,27 +4,27 @@ import (
 	"time"
 )
 
-type IngrediantDTO struct {
+type IngredientDTO struct {
 	Name        string `dynamodbav:"name"`
 	Measurement string `dynamodbav:"measurement"`
 }
 
 type RecipeDTO struct {
-	PK           string          `dynamodbav:"PK"`
-	SK           string          `dynamodbav:"SK"`
-	Name         string          `dynamodbav:"name"`
-	Instructions string          `dynamodbav:"instructions"`
-	Ingrediants  []IngrediantDTO `dynamodbav:"integrediants"`
-	PrepareTime  time.Time       `dynamodbav:"prepareTime"`
-	CreateTime   time.Time       `dynamodbav:"createTime"`
-	UpdateTime   time.Time       `dynamodbav:"updateTime"`
+	PK                 string          `dynamodbav:"PK"`
+	SK                 string          `dynamodbav:"SK"`
+	Name               string          `dynamodbav:"name"`
+	Instructions       string          `dynamodbav:"instructions"`
+	Ingredients        []IngredientDTO `dynamodbav:"ingredients"`
+	PrepareTimeMinutes *int            `dynamodbav:"prepareTimeMinutes"`
+	CreateTime         time.Time       `dynamodbav:"createTime"`
+	UpdateTime         time.Time       `dynamodbav:"updateTime"`
 }
 
 type RecipeInputDTO struct {
-	Name         *string          `dynamodbav:"name"`
-	Instructions *string          `dynamodbav:"instructions"`
-	Ingrediants  *[]IngrediantDTO `dynamodbav:"ingrediants"`
-	PrepareTime  *time.Time       `dynamodbav:"prepareTime"`
+	Name               *string          `dynamodbav:"name"`
+	Instructions       *string          `dynamodbav:"instructions"`
+	Ingredients        *[]IngredientDTO `dynamodbav:"ingredients"`
+	PrepareTimeMinutes *int             `dynamodbav:"prepareTimeMinutes"`
 }
 
 type RecipeDataService interface {
