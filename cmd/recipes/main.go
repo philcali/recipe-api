@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"philcali.me/recipes/internal/dynamodb/services"
+	"philcali.me/recipes/internal/dynamodb/token"
 	"philcali.me/recipes/internal/routes"
 	"philcali.me/recipes/internal/routes/recipes"
 )
@@ -24,9 +25,10 @@ func NewApp() App {
 		panic("Failed to load AWS config.")
 	}
 	client := dynamodb.NewFromConfig(cfg)
+	marshaler := token.NewGCM()
 	return App{
 		Router: *routes.NewRouter(
-			recipes.NewRoute(services.NewRecipeService(tableName, *client)),
+			recipes.NewRoute(services.NewRecipeService(tableName, *client, marshaler)),
 		),
 	}
 }

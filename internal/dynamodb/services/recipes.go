@@ -2,8 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -14,18 +12,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"philcali.me/recipes/internal/data"
+	"philcali.me/recipes/internal/dynamodb/token"
 	"philcali.me/recipes/internal/exceptions"
 )
 
 type RecipeDynamoDBService struct {
-	DynamoDB  dynamodb.Client
-	TableName string
+	DynamoDB       dynamodb.Client
+	TableName      string
+	TokenMarshaler token.TokenMarshaler
 }
 
-func NewRecipeService(tableName string, client dynamodb.Client) data.RecipeDataService {
+func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.RecipeDataService {
 	return &RecipeDynamoDBService{
-		DynamoDB:  client,
-		TableName: tableName,
+		DynamoDB:       client,
+		TableName:      tableName,
+		TokenMarshaler: marshaler,
 	}
 }
 
@@ -45,81 +46,6 @@ func _getPrimaryKey(accountId string) string {
 	return fmt.Sprintf("%s:Recipe", accountId)
 }
 
-func _encodeNextToken(token []byte) []byte {
-	enc := make([]byte, base64.StdEncoding.EncodedLen(len(token)))
-	base64.StdEncoding.Encode(enc, token)
-	return enc
-}
-
-func _decodeNextToken(encToken []byte) ([]byte, error) {
-	dec := make([]byte, base64.StdEncoding.DecodedLen(len(encToken)))
-	n, err := base64.StdEncoding.Decode(dec, encToken)
-	if err != nil {
-		return nil, err
-	}
-	return dec[:n], err
-}
-
-func _convertLastKeyToToken(lastKey map[string]types.AttributeValue) ([]byte, error) {
-	var bytes []byte
-	var err error
-	if lastKey == nil || len(lastKey) == 0 {
-		return bytes, nil
-	}
-	token := make(data.NextToken, len(lastKey))
-	for key, value := range lastKey {
-		innerMap := make(map[string]string, 1)
-		if sv, ok := value.(*types.AttributeValueMemberS); ok {
-			innerMap["S"] = sv.Value
-		}
-		if nv, ok := value.(*types.AttributeValueMemberN); ok {
-			innerMap["N"] = nv.Value
-		}
-		if bv, ok := value.(*types.AttributeValueMemberB); ok {
-			innerMap["B"] = string(bv.Value)
-		}
-		token[key] = innerMap
-	}
-	if bytes, err = json.Marshal(token); err == nil {
-		bytes = _encodeNextToken(bytes)
-	}
-	return bytes, err
-}
-
-func _convertTokenToLastKey(token []byte) (map[string]types.AttributeValue, error) {
-	if token == nil || len(token) == 0 {
-		return nil, nil
-	}
-	decToken, err := _decodeNextToken(token)
-	if err != nil {
-		return nil, err
-	}
-	var nextToken data.NextToken
-	err = json.Unmarshal(decToken, &nextToken)
-	if err != nil {
-		return nil, err
-	}
-	lastKey := make(map[string]types.AttributeValue, len(nextToken))
-	for field, innerMap := range nextToken {
-		if sv, ok := innerMap["S"]; ok {
-			lastKey[field] = &types.AttributeValueMemberS{
-				Value: sv,
-			}
-		}
-		if nv, ok := innerMap["N"]; ok {
-			lastKey[field] = &types.AttributeValueMemberN{
-				Value: nv,
-			}
-		}
-		if bv, ok := innerMap["B"]; ok {
-			lastKey[field] = &types.AttributeValueMemberB{
-				Value: []byte(bv),
-			}
-		}
-	}
-	return lastKey, nil
-}
-
 func (rs *RecipeDynamoDBService) ListRecipes(accountId string, params data.QueryParams) (data.QueryResults[data.RecipeDTO], error) {
 	keyEx := expression.Key("PK").Equal(expression.Value(_getPrimaryKey(accountId)))
 	expr, err := expression.NewBuilder().WithKeyCondition(keyEx).Build()
@@ -128,7 +54,7 @@ func (rs *RecipeDynamoDBService) ListRecipes(accountId string, params data.Query
 	}
 	var items []data.RecipeDTO
 	var startKey map[string]types.AttributeValue
-	startKey, err = _convertTokenToLastKey(params.NextToken)
+	startKey, err = rs.TokenMarshaler.Unmarshal(accountId, params.NextToken)
 	if err != nil {
 		return data.QueryResults[data.RecipeDTO]{}, err
 	}
@@ -147,7 +73,7 @@ func (rs *RecipeDynamoDBService) ListRecipes(accountId string, params data.Query
 	if err != nil {
 		return data.QueryResults[data.RecipeDTO]{}, err
 	}
-	token, err := _convertLastKeyToToken(output.LastEvaluatedKey)
+	token, err := rs.TokenMarshaler.Marshal(accountId, output.LastEvaluatedKey)
 	if err != nil {
 		return data.QueryResults[data.RecipeDTO]{}, err
 	}
