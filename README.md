@@ -1,5 +1,7 @@
 # A GoLang Playground
 
+[![Go](https://github.com/philcali/recipe-api/actions/workflows/go.yml/badge.svg)](https://github.com/philcali/recipe-api/actions/workflows/go.yml)
+
 This serves two purposes:
 
 1. A place where I can learn "real world" GoLang (though my heart tells this is a mistake. GoLang is a disaster programming language.)
