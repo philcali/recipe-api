@@ -24,7 +24,7 @@ import (
 	"philcali.me/recipes/internal/routes/recipes"
 )
 
-const LOCAL_DDB_PORT = 8080
+const LOCAL_DDB_PORT = 8000
 
 func _createTable(client *dynamodb.Client) (string, error) {
 	keySchema := []types.KeySchemaElement{
