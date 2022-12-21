@@ -87,8 +87,8 @@ func _createLocalClient() (*dynamodb.Client, error) {
 
 func _startLocalServer(t *testing.T) {
 	workingDir := os.Getenv("PWD")
-	cmd := exec.Command("java",
-		fmt.Sprintf("-Djava.library.path=%s/../../dynamodb/DynamoDBLocal_list", workingDir),
+	cmd := exec.Command(
+		"java", fmt.Sprintf("-Djava.library.path=%s/../../dynamodb/DynamoDBLocal_list", workingDir),
 		"-jar", fmt.Sprintf("%s/../../dynamodb/DynamoDBLocal.jar", workingDir),
 		"-port", strconv.Itoa(LOCAL_DDB_PORT),
 		"-inMemory",
@@ -103,7 +103,7 @@ func _startLocalServer(t *testing.T) {
 	})
 }
 
-func _createRouter(t *testing.T) *LocalServer {
+func NewLocalServer(t *testing.T) *LocalServer {
 	client, err := _createLocalClient()
 	if err != nil {
 		t.Fatalf("Failed to create DDB client: %s", err)
@@ -174,7 +174,7 @@ func (ls *LocalServer) Put(t *testing.T, out any, path string, body any) events.
 
 func TestRouter(t *testing.T) {
 	_startLocalServer(t)
-	server := _createRouter(t)
+	server := NewLocalServer(t)
 	t.Run("RecipeWorkflow", func(t *testing.T) {
 		var createdRecipe recipes.Recipe
 		created := server.Post(t, &createdRecipe, "/recipes", &recipes.RecipeInput{
