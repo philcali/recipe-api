@@ -67,6 +67,7 @@ func _createTable(client *dynamodb.Client) (string, error) {
 
 func _createLocalClient() (*dynamodb.Client, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithRetryMaxAttempts(10),
 		config.WithRegion("us-east-1"),
 		config.WithEndpointResolver(aws.EndpointResolverFunc(
 			func(service, region string) (aws.Endpoint, error) {
