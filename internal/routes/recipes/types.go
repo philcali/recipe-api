@@ -7,15 +7,16 @@ import (
 )
 
 type Ingredient struct {
-	Name        string `json:"name"`
-	Measurement string `json:"measurement"`
+	Name        string  `json:"name"`
+	Measurement string  `json:"measurement"`
+	Amount      float32 `json:"amount"`
 }
 
 type RecipeInput struct {
-	Name            *string       `json:"name"`
-	Instructions    *string       `json:"instructions"`
-	PreparationTime *int          `json:"preparationTime"`
-	Ingredients     *[]Ingredient `json:"ingredients"`
+	Name               *string       `json:"name"`
+	Instructions       *string       `json:"instructions"`
+	PrepareTimeMinutes *int          `json:"prepareTimeMinutes"`
+	Ingredients        *[]Ingredient `json:"ingredients"`
 }
 
 func (r *RecipeInput) ToData() data.RecipeInputDTO {
@@ -26,6 +27,7 @@ func (r *RecipeInput) ToData() data.RecipeInputDTO {
 			ingredients[i] = data.IngredientDTO{
 				Name:        id.Name,
 				Measurement: id.Measurement,
+				Amount:      id.Amount,
 			}
 		}
 	}
@@ -33,18 +35,18 @@ func (r *RecipeInput) ToData() data.RecipeInputDTO {
 		Name:               r.Name,
 		Instructions:       r.Instructions,
 		Ingredients:        &ingredients,
-		PrepareTimeMinutes: r.PreparationTime,
+		PrepareTimeMinutes: r.PrepareTimeMinutes,
 	}
 }
 
 type Recipe struct {
-	Id           string       `json:"recipeId"`
-	Name         string       `json:"name"`
-	Instructions string       `json:"instructions"`
-	PrepareTime  *int         `json:"prepareTimeMinutes"`
-	Ingredients  []Ingredient `json:"ingredients"`
-	CreateTime   time.Time    `json:"createTime"`
-	UpdateTime   time.Time    `json:"updateTime"`
+	Id                 string       `json:"recipeId"`
+	Name               string       `json:"name"`
+	Instructions       string       `json:"instructions"`
+	PrepareTimeMinutes int          `json:"prepareTimeMinutes"`
+	Ingredients        []Ingredient `json:"ingredients"`
+	CreateTime         time.Time    `json:"createTime"`
+	UpdateTime         time.Time    `json:"updateTime"`
 }
 
 func NewRecipe(recipe data.RecipeDTO) Recipe {
@@ -55,16 +57,17 @@ func NewRecipe(recipe data.RecipeDTO) Recipe {
 			ingredients[i] = Ingredient{
 				Name:        id.Name,
 				Measurement: id.Measurement,
+				Amount:      id.Amount,
 			}
 		}
 	}
 	return Recipe{
-		Id:           recipe.SK,
-		Name:         recipe.Name,
-		CreateTime:   recipe.CreateTime,
-		UpdateTime:   recipe.UpdateTime,
-		PrepareTime:  recipe.PrepareTimeMinutes,
-		Instructions: recipe.Instructions,
-		Ingredients:  ingredients,
+		Id:                 recipe.SK,
+		Name:               recipe.Name,
+		CreateTime:         recipe.CreateTime,
+		UpdateTime:         recipe.UpdateTime,
+		PrepareTimeMinutes: recipe.PrepareTimeMinutes,
+		Instructions:       recipe.Instructions,
+		Ingredients:        ingredients,
 	}
 }

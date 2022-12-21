@@ -115,7 +115,7 @@ func (rs *RecipeDynamoDBService) CreateRecipe(accountId string, input data.Recip
 		Name:               *input.Name,
 		Instructions:       *input.Instructions,
 		Ingredients:        *input.Ingredients,
-		PrepareTimeMinutes: input.PrepareTimeMinutes,
+		PrepareTimeMinutes: *input.PrepareTimeMinutes,
 		CreateTime:         now,
 		UpdateTime:         now,
 	}

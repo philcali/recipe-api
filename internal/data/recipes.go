@@ -5,8 +5,9 @@ import (
 )
 
 type IngredientDTO struct {
-	Name        string `dynamodbav:"name"`
-	Measurement string `dynamodbav:"measurement"`
+	Name        string  `dynamodbav:"name"`
+	Measurement string  `dynamodbav:"measurement"`
+	Amount      float32 `dynamodbav:"amount"`
 }
 
 type RecipeDTO struct {
@@ -15,7 +16,7 @@ type RecipeDTO struct {
 	Name               string          `dynamodbav:"name"`
 	Instructions       string          `dynamodbav:"instructions"`
 	Ingredients        []IngredientDTO `dynamodbav:"ingredients"`
-	PrepareTimeMinutes *int            `dynamodbav:"prepareTimeMinutes"`
+	PrepareTimeMinutes int             `dynamodbav:"prepareTimeMinutes"`
 	CreateTime         time.Time       `dynamodbav:"createTime"`
 	UpdateTime         time.Time       `dynamodbav:"updateTime"`
 }
