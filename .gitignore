@@ -1,1 +1,5 @@
 app
+# For testing
+dynamodb/DynamoDBLocal*
+dynamodb/*.txt
+dynamodb/*.tar.gz
