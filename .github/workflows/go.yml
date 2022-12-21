@@ -15,11 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-
+      with:
+        fetch-depth: 0
+    - name: Conventional Commit Checker
+      uses: wagoid/commitlint-github-action@v4
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: 1.19
+
+    - name: Pull DynamoDB Local
+      run: ./dev.pull-dynamodb.sh
 
     - name: Build
       run: go build -v ./...
