@@ -114,12 +114,16 @@ func NewLocalServer(t *testing.T) *LocalServer {
 		t.Fatalf("Failed to create DDB table: %s", err)
 	}
 	t.Logf("Successfully created local resources running on %d", LOCAL_DDB_PORT)
-	return &LocalServer{
-		Router: routes.NewRouter(
-			recipes.NewRoute(
-				services.NewRecipeService(tableName, *client, token.NewGCM()),
-			),
+	router, err := routes.NewRouter(
+		recipes.NewRoute(
+			services.NewRecipeService(tableName, *client, token.NewGCM()),
 		),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create a router: %s", err)
+	}
+	return &LocalServer{
+		Router: router,
 	}
 }
 

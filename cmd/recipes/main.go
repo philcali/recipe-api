@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -26,10 +27,14 @@ func NewApp() App {
 	}
 	client := dynamodb.NewFromConfig(cfg)
 	marshaler := token.NewGCM()
+	router, err := routes.NewRouter(
+		recipes.NewRoute(services.NewRecipeService(tableName, *client, marshaler)),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to cache all routes: %s", err))
+	}
 	return App{
-		Router: *routes.NewRouter(
-			recipes.NewRoute(services.NewRecipeService(tableName, *client, marshaler)),
-		),
+		Router: *router,
 	}
 }
 
