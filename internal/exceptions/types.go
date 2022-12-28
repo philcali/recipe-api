@@ -1,6 +1,9 @@
 package exceptions
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type ServiceError struct {
 	StatusCode int
@@ -80,5 +83,12 @@ func (ie *InvalidInputError) ToServiceError() *ServiceError {
 func InvalidInput(message string) *InvalidInputError {
 	return &InvalidInputError{
 		Message: message,
+	}
+}
+
+func InternalServer(message string) *ServiceError {
+	return &ServiceError{
+		StatusCode: 500,
+		Cause:      errors.New(message),
 	}
 }
