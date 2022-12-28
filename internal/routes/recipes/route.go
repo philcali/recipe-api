@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"philcali.me/recipes/internal/data"
@@ -23,18 +22,13 @@ func NewRoute(data data.RecipeDataService) routes.Service {
 	}
 }
 
-func _getRecipeId(event events.APIGatewayV2HTTPRequest) string {
-	parts := strings.Split(event.RawPath, "/")
-	return parts[len(parts)-1]
-}
-
 func (rs *RecipeService) GetRoutes() map[string]routes.Route {
 	return map[string]routes.Route{
-		"GET:/recipes":        util.AuthorizedRoute(rs.ListRecipes),
-		"GET:/recipes/:id":    util.AuthorizedRoute(rs.GetRecipe),
-		"POST:/recipes":       util.AuthorizedRoute(rs.CreateRecipe),
-		"PUT:/recipes/:id":    util.AuthorizedRoute(rs.UpdateRecipe),
-		"DELETE:/recipes/:id": util.AuthorizedRoute(rs.DeleteRecipe),
+		"GET:/recipes":              util.AuthorizedRoute(rs.ListRecipes),
+		"GET:/recipes/:recipeId":    util.AuthorizedRoute(rs.GetRecipe),
+		"POST:/recipes":             util.AuthorizedRoute(rs.CreateRecipe),
+		"PUT:/recipes/:recipeId":    util.AuthorizedRoute(rs.UpdateRecipe),
+		"DELETE:/recipes/:recipeId": util.AuthorizedRoute(rs.DeleteRecipe),
 	}
 }
 
@@ -50,7 +44,7 @@ func (rs *RecipeService) ListRecipes(event events.APIGatewayV2HTTPRequest, ctx c
 	if token, ok := event.QueryStringParameters["nextToken"]; ok {
 		nextToken = []byte(token)
 	}
-	items, err := rs.data.ListRecipes(ctx.Value("Username").(string), data.QueryParams{
+	items, err := rs.data.ListRecipes(util.Username(ctx), data.QueryParams{
 		Limit:     limit,
 		NextToken: nextToken,
 	})
@@ -58,7 +52,7 @@ func (rs *RecipeService) ListRecipes(event events.APIGatewayV2HTTPRequest, ctx c
 }
 
 func (rs *RecipeService) GetRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	item, err := rs.data.GetRecipe(ctx.Value("Username").(string), _getRecipeId(event))
+	item, err := rs.data.GetRecipe(util.Username(ctx), util.RequestParam(ctx, "recipeId"))
 	return util.SerializeResponseOK(NewRecipe, item, err)
 }
 
@@ -67,7 +61,7 @@ func (rs *RecipeService) CreateRecipe(event events.APIGatewayV2HTTPRequest, ctx 
 	if err := json.Unmarshal([]byte(event.Body), &input); err != nil {
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
-	created, err := rs.data.CreateRecipe(ctx.Value("Username").(string), input.ToData())
+	created, err := rs.data.CreateRecipe(util.Username(ctx), input.ToData())
 	return util.SerializeResponseOK(NewRecipe, created, err)
 }
 
@@ -76,11 +70,11 @@ func (rs *RecipeService) UpdateRecipe(event events.APIGatewayV2HTTPRequest, ctx 
 	if err := json.Unmarshal([]byte(event.Body), &input); err != nil {
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
-	item, err := rs.data.UpdateRecipe(ctx.Value("Username").(string), _getRecipeId(event), input.ToData())
+	item, err := rs.data.UpdateRecipe(util.Username(ctx), util.RequestParam(ctx, "recipeId"), input.ToData())
 	return util.SerializeResponseOK(NewRecipe, item, err)
 }
 
 func (rs *RecipeService) DeleteRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	err := rs.data.DeleteRecipe(ctx.Value("Username").(string), _getRecipeId(event))
+	err := rs.data.DeleteRecipe(util.Username(ctx), util.RequestParam(ctx, "recipeId"))
 	return util.SerializeResponseNoContent(err)
 }

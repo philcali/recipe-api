@@ -20,6 +20,14 @@ func AuthorizedRoute(route routes.Route) routes.Route {
 	}
 }
 
+func RequestParam(ctx context.Context, param string) string {
+	return ctx.Value("Params").(map[string]string)[param]
+}
+
+func Username(ctx context.Context) string {
+	return ctx.Value("Username").(string)
+}
+
 func SerializeResponse[T interface{}, R interface{}](delayed func(T) R, thing T, err error, statusCode int) (events.APIGatewayV2HTTPResponse, error) {
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{}, err
