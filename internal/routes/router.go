@@ -66,6 +66,7 @@ func (r *Router) Invoke(event events.APIGatewayV2HTTPRequest, ctx context.Contex
 			return translateError(err)
 		}
 		if reg.MatchString(event.RawPath) {
+			// TODO: add parameter values to ctx
 			resp, err := route(event, ctx)
 			if err != nil {
 				return translateError(err)

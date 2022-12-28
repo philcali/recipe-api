@@ -1,12 +1,24 @@
 package util
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
 	"philcali.me/recipes/internal/data"
+	"philcali.me/recipes/internal/exceptions"
+	"philcali.me/recipes/internal/routes"
 )
+
+func AuthorizedRoute(route routes.Route) routes.Route {
+	return func(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+		if username, ok := event.RequestContext.Authorizer.JWT.Claims["username"]; ok {
+			return route(event, context.WithValue(ctx, "Username", username))
+		}
+		return events.APIGatewayV2HTTPResponse{}, exceptions.InternalServer("Unexpected internal error")
+	}
+}
 
 func SerializeResponse[T interface{}, R interface{}](delayed func(T) R, thing T, err error, statusCode int) (events.APIGatewayV2HTTPResponse, error) {
 	if err != nil {
