@@ -27,7 +27,7 @@ func NewApp() App {
 	}
 	client := dynamodb.NewFromConfig(cfg)
 	marshaler := token.NewGCM()
-	router, err := routes.NewRouter(
+	router := routes.NewRouter(
 		recipes.NewRoute(services.NewRecipeService(tableName, *client, marshaler)),
 	)
 	if err != nil {
