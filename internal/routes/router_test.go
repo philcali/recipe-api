@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"golang.org/x/exp/maps"
 	"philcali.me/recipes/internal/data"
 	"philcali.me/recipes/internal/dynamodb/services"
 	"philcali.me/recipes/internal/dynamodb/token"
@@ -153,6 +154,10 @@ func (ls *LocalServer) Request(t *testing.T, method string, path string, body []
 	return response
 }
 
+func (ls *LocalServer) Options(t *testing.T, path string) events.APIGatewayV2HTTPResponse {
+	return ls.Request(t, "OPTIONS", path, nil, nil)
+}
+
 func (ls *LocalServer) Get(t *testing.T, out any, path string) events.APIGatewayV2HTTPResponse {
 	return ls.Request(t, "GET", path, nil, &out)
 }
@@ -236,6 +241,25 @@ func TestRouter(t *testing.T) {
 		})
 		if 404 != updated.StatusCode {
 			t.Fatalf("Expected status code of 404, but got %d: %s", updated.StatusCode, updated.Body)
+		}
+	})
+
+	t.Run("CorsPreflight", func(t *testing.T) {
+		preflight := server.Options(t, "/recipes")
+		if 200 != preflight.StatusCode {
+			t.Errorf("Received a %d status code, expected 200", preflight.StatusCode)
+		}
+		if preflight.Body != "" {
+			t.Errorf("Received a response body for OPTIONS: %s", preflight.Body)
+		}
+		expected := map[string]string{
+			"content-length":               "0",
+			"access-control-allow-headers": "Content-Type, Content-Length, Authorization",
+			"access-control-allow-methods": "GET, PUT, POST, DELETE",
+			"access-control-allow-origin":  "*",
+		}
+		if !maps.Equal(preflight.Headers, expected) {
+			t.Errorf("Headers from preflight %v, do not match expected %v", preflight.Headers, expected)
 		}
 	})
 }

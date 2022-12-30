@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"philcali.me/recipes/internal/exceptions"
+	"philcali.me/recipes/internal/routes/filters"
 )
 
 type Route func(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error)
@@ -62,11 +63,13 @@ func (cr *CachedRoute) MatchEvent(event events.APIGatewayV2HTTPRequest) (map[str
 }
 
 type Router struct {
-	Routes []CachedRoute
+	Filters []filters.RequestFilter
+	Routes  []CachedRoute
 }
 
 func NewRouter(services ...Service) *Router {
 	var routes []CachedRoute
+	var fltrs []filters.RequestFilter
 	for _, service := range services {
 		for composite, route := range service.GetRoutes() {
 			parts := strings.SplitN(composite, ":", 2)
@@ -81,8 +84,10 @@ func NewRouter(services ...Service) *Router {
 			routes = append(routes, cachedRoute)
 		}
 	}
+	fltrs = append(fltrs, filters.DefaultCorsFilter())
 	return &Router{
-		Routes: routes,
+		Routes:  routes,
+		Filters: fltrs,
 	}
 }
 
@@ -107,9 +112,17 @@ func translateError(err error) events.APIGatewayV2HTTPResponse {
 }
 
 func (r *Router) Invoke(event events.APIGatewayV2HTTPRequest, ctx context.Context) events.APIGatewayV2HTTPResponse {
+	filterContext := filters.DefaultFilterContext(event, ctx)
+	for _, filter := range r.Filters {
+		updatedContext, broken := filter.Filter(filterContext)
+		if broken {
+			return *updatedContext.Response
+		}
+		filterContext = updatedContext
+	}
 	for _, route := range r.Routes {
-		if params, ok := route.MatchEvent(event); ok {
-			resp, err := route.Route(event, context.WithValue(ctx, "Params", params))
+		if params, ok := route.MatchEvent(*filterContext.Request); ok {
+			resp, err := route.Route(event, context.WithValue(*filterContext.Context, "Params", params))
 			if err != nil {
 				return translateError(err)
 			}
