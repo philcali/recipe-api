@@ -22,3 +22,11 @@ type QueryResults[T interface{}] struct {
 }
 
 type NextToken map[string]map[string]string
+
+type Repository[T interface{}, I interface{}] interface {
+	Get(accountId string, itemId string) (T, error)
+	Create(accountId string, input I) (T, error)
+	Update(accountId string, itemId string, input I) (T, error)
+	List(accountId string, params QueryParams) (QueryResults[T], error)
+	Delete(accountId string, itemId string) error
+}

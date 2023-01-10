@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"philcali.me/recipes/internal/data"
+	"philcali.me/recipes/internal/routes/util"
 )
 
 type Ingredient struct {
@@ -19,22 +20,27 @@ type RecipeInput struct {
 	Ingredients        *[]Ingredient `json:"ingredients"`
 }
 
-func (r *RecipeInput) ToData() data.RecipeInputDTO {
-	var ingredients []data.IngredientDTO
-	if r.Ingredients != nil {
-		ingredients = make([]data.IngredientDTO, len(*r.Ingredients))
-		for i, id := range *r.Ingredients {
-			ingredients[i] = data.IngredientDTO{
-				Name:        id.Name,
-				Measurement: id.Measurement,
-				Amount:      id.Amount,
-			}
-		}
+func ConvertIngredientToData(in Ingredient) data.IngredientDTO {
+	return data.IngredientDTO{
+		Name:        in.Name,
+		Measurement: in.Measurement,
+		Amount:      in.Amount,
 	}
+}
+
+func ConvertIngredientDataToTransfer(in data.IngredientDTO) Ingredient {
+	return Ingredient{
+		Name:        in.Name,
+		Measurement: in.Measurement,
+		Amount:      in.Amount,
+	}
+}
+
+func (r *RecipeInput) ToData() data.RecipeInputDTO {
 	return data.RecipeInputDTO{
 		Name:               r.Name,
 		Instructions:       r.Instructions,
-		Ingredients:        &ingredients,
+		Ingredients:        util.MapOnList(r.Ingredients, ConvertIngredientToData),
 		PrepareTimeMinutes: r.PrepareTimeMinutes,
 	}
 }
@@ -50,17 +56,6 @@ type Recipe struct {
 }
 
 func NewRecipe(recipe data.RecipeDTO) Recipe {
-	var ingredients []Ingredient
-	if recipe.Ingredients != nil {
-		ingredients = make([]Ingredient, len(recipe.Ingredients))
-		for i, id := range recipe.Ingredients {
-			ingredients[i] = Ingredient{
-				Name:        id.Name,
-				Measurement: id.Measurement,
-				Amount:      id.Amount,
-			}
-		}
-	}
 	return Recipe{
 		Id:                 recipe.SK,
 		Name:               recipe.Name,
@@ -68,6 +63,6 @@ func NewRecipe(recipe data.RecipeDTO) Recipe {
 		UpdateTime:         recipe.UpdateTime,
 		PrepareTimeMinutes: recipe.PrepareTimeMinutes,
 		Instructions:       recipe.Instructions,
-		Ingredients:        ingredients,
+		Ingredients:        *util.MapOnList(&recipe.Ingredients, ConvertIngredientDataToTransfer),
 	}
 }

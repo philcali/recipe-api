@@ -11,6 +11,17 @@ import (
 	"philcali.me/recipes/internal/routes"
 )
 
+func MapOnList[I interface{}, O interface{}](ls *[]I, thunk func(I) O) *[]O {
+	var result []O
+	if ls != nil {
+		result = make([]O, len(*ls))
+		for i, elem := range *ls {
+			result[i] = thunk(elem)
+		}
+	}
+	return &result
+}
+
 func AuthorizedRoute(route routes.Route) routes.Route {
 	return func(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
 		if username, ok := event.RequestContext.Authorizer.JWT.Claims["username"]; ok {
@@ -49,6 +60,25 @@ func SerializeResponse[T interface{}, R interface{}](delayed func(T) R, thing T,
 
 func SerializeResponseOK[T interface{}, R interface{}](delayed func(T) R, thing T, err error) (events.APIGatewayV2HTTPResponse, error) {
 	return SerializeResponse(delayed, thing, err, 200)
+}
+
+func SerializeList[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+	var limit int
+	var nextToken []byte
+	var err error
+	if sLimit, ok := event.QueryStringParameters["limit"]; ok {
+		if limit, err = strconv.Atoi(sLimit); err != nil {
+			return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput("Limit parameter was not a number type.")
+		}
+	}
+	if token, ok := event.QueryStringParameters["nextToken"]; ok {
+		nextToken = []byte(token)
+	}
+	items, err := repo.List(Username(ctx), data.QueryParams{
+		Limit:     limit,
+		NextToken: nextToken,
+	})
+	return SerializeResponseOK(ConvertQueryResultsPartial(thunk), items, err)
 }
 
 func SerializeResponseNoContent(err error) (events.APIGatewayV2HTTPResponse, error) {
