@@ -29,9 +29,5 @@ type RecipeInputDTO struct {
 }
 
 type RecipeDataService interface {
-	GetRecipe(accountId string, recipeId string) (RecipeDTO, error)
-	CreateRecipe(accountId string, input RecipeInputDTO) (RecipeDTO, error)
-	UpdateRecipe(accountId string, recipeId string, input RecipeInputDTO) (RecipeDTO, error)
-	ListRecipes(accountId string, params QueryParams) (QueryResults[RecipeDTO], error)
-	DeleteRecipe(accountId string, recipeId string) error
+	Repository[RecipeDTO, RecipeInputDTO]
 }

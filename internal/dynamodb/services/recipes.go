@@ -22,7 +22,7 @@ type RecipeDynamoDBService struct {
 	TokenMarshaler token.TokenMarshaler
 }
 
-func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.RecipeDataService {
+func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.Repository[data.RecipeDTO, data.RecipeInputDTO] {
 	return &RecipeDynamoDBService{
 		DynamoDB:       client,
 		TableName:      tableName,
@@ -46,7 +46,7 @@ func _getPrimaryKey(accountId string) string {
 	return fmt.Sprintf("%s:Recipe", accountId)
 }
 
-func (rs *RecipeDynamoDBService) ListRecipes(accountId string, params data.QueryParams) (data.QueryResults[data.RecipeDTO], error) {
+func (rs *RecipeDynamoDBService) List(accountId string, params data.QueryParams) (data.QueryResults[data.RecipeDTO], error) {
 	keyEx := expression.Key("PK").Equal(expression.Value(_getPrimaryKey(accountId)))
 	expr, err := expression.NewBuilder().WithKeyCondition(keyEx).Build()
 	if err != nil {
@@ -83,7 +83,7 @@ func (rs *RecipeDynamoDBService) ListRecipes(accountId string, params data.Query
 	}, nil
 }
 
-func (rs *RecipeDynamoDBService) GetRecipe(accountId string, recipeId string) (data.RecipeDTO, error) {
+func (rs *RecipeDynamoDBService) Get(accountId string, recipeId string) (data.RecipeDTO, error) {
 	shim := data.RecipeDTO{PK: _getPrimaryKey(accountId), SK: recipeId}
 	key, err := getKey(shim)
 	if err != nil {
@@ -103,7 +103,7 @@ func (rs *RecipeDynamoDBService) GetRecipe(accountId string, recipeId string) (d
 	return shim, err
 }
 
-func (rs *RecipeDynamoDBService) CreateRecipe(accountId string, input data.RecipeInputDTO) (data.RecipeDTO, error) {
+func (rs *RecipeDynamoDBService) Create(accountId string, input data.RecipeInputDTO) (data.RecipeDTO, error) {
 	gid, err := uuid.NewUUID()
 	if err != nil {
 		return data.RecipeDTO{}, err
@@ -142,7 +142,7 @@ func (rs *RecipeDynamoDBService) CreateRecipe(accountId string, input data.Recip
 	return shim, err
 }
 
-func (rs *RecipeDynamoDBService) UpdateRecipe(accountId string, recipeId string, input data.RecipeInputDTO) (data.RecipeDTO, error) {
+func (rs *RecipeDynamoDBService) Update(accountId string, recipeId string, input data.RecipeInputDTO) (data.RecipeDTO, error) {
 	shim := data.RecipeDTO{PK: _getPrimaryKey(accountId), SK: recipeId}
 	key, err := getKey(shim)
 	if err != nil {
@@ -186,7 +186,7 @@ func (rs *RecipeDynamoDBService) UpdateRecipe(accountId string, recipeId string,
 	return shim, err
 }
 
-func (rs *RecipeDynamoDBService) DeleteRecipe(accountId string, recipeId string) error {
+func (rs *RecipeDynamoDBService) Delete(accountId string, recipeId string) error {
 	shim := data.RecipeDTO{PK: _getPrimaryKey(accountId), SK: recipeId}
 	key, err := getKey(shim)
 	if err != nil {
