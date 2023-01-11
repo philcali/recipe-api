@@ -19,10 +19,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/maps"
 	"philcali.me/recipes/internal/data"
-	"philcali.me/recipes/internal/dynamodb/services"
+	recipeData "philcali.me/recipes/internal/dynamodb/recipes"
+	shoppingData "philcali.me/recipes/internal/dynamodb/shopping"
 	"philcali.me/recipes/internal/dynamodb/token"
 	"philcali.me/recipes/internal/routes"
 	"philcali.me/recipes/internal/routes/recipes"
+	"philcali.me/recipes/internal/routes/shopping"
 )
 
 const LOCAL_DDB_PORT = 8000
@@ -115,10 +117,10 @@ func NewLocalServer(t *testing.T) *LocalServer {
 		t.Fatalf("Failed to create DDB table: %s", err)
 	}
 	t.Logf("Successfully created local resources running on %d", LOCAL_DDB_PORT)
+	marshaler := token.NewGCM()
 	router := routes.NewRouter(
-		recipes.NewRoute(
-			services.NewRecipeService(tableName, *client, token.NewGCM()),
-		),
+		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
+		shopping.NewRoute(shoppingData.NewShoppingListDynamoDBService(tableName, *client, marshaler)),
 	)
 	if err != nil {
 		t.Fatalf("Failed to create a router: %s", err)
@@ -188,9 +190,8 @@ func TestRouter(t *testing.T) {
 	t.Run("RecipeWorkflow", func(t *testing.T) {
 		var createdRecipe recipes.Recipe
 		created := server.Post(t, &createdRecipe, "/recipes", &recipes.RecipeInput{
-			Name:               aws.String("Fart Soup"),
-			Instructions:       aws.String("Eat a bowl of beans. Wait for 30 minutes. Fart in mason jar."),
-			PrepareTimeMinutes: aws.Int(30),
+			Name:         aws.String("Fart Soup"),
+			Instructions: aws.String("Eat a bowl of beans. Wait for 30 minutes. Fart in mason jar."),
 			Ingredients: &[]recipes.Ingredient{
 				{
 					Name:        "beans",
@@ -226,12 +227,66 @@ func TestRouter(t *testing.T) {
 		if getUpdateRecipe.Name != "Fart Update" {
 			t.Fatalf("Failed to update %s: %s", getUpdateRecipe.Name, getUpdate.Body)
 		}
-		if getUpdateRecipe.PrepareTimeMinutes < 35 {
+		if *getUpdateRecipe.PrepareTimeMinutes < 35 {
 			t.Fatalf("Failed to update %d: %s", getUpdateRecipe.PrepareTimeMinutes, getUpdate.Body)
 		}
 		deleted := server.Delete(t, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if 204 != deleted.StatusCode {
 			t.Fatalf("Response on delete %d: %s", deleted.StatusCode, deleted.Body)
+		}
+	})
+
+	t.Run("ShoppingListWorkflow", func(t *testing.T) {
+		var createdList shopping.ShoppingList
+		created := server.Post(t, &createdList, "/lists", &shopping.ShoppingListInput{
+			Name: aws.String("My List"),
+			Items: &[]recipes.Ingredient{
+				{
+					Name:        "bread",
+					Measurement: "loaf",
+					Amount:      1,
+				},
+				{
+					Name:        "milk",
+					Measurement: "gallon",
+					Amount:      1,
+				},
+			},
+		})
+		if 200 != created.StatusCode {
+			t.Errorf("Failed to create shopping list, expected 200 got %d: %s", created.StatusCode, created.Body)
+		}
+		get := server.Get(t, nil, fmt.Sprintf("/lists/%s", createdList.Id))
+		if 200 != get.StatusCode {
+			t.Errorf("Failed to get new list %s, expected 200 got %d: %s", createdList.Id, get.StatusCode, get.Body)
+		}
+		if get.Body != created.Body {
+			t.Errorf("Expected body, expected %s got %s", created.Body, get.Body)
+		}
+		var results data.QueryResults[shopping.ShoppingList]
+		list := server.Get(t, &results, "/lists")
+		if len(results.Items) < 1 {
+			t.Errorf("Failed to query for lists, expected 1 got %v", list)
+		}
+		hourFromNow := int(time.Now().Add(time.Hour + 1).Unix())
+		var updatedList shopping.ShoppingList
+		update := server.Put(t, &updatedList, fmt.Sprintf("/lists/%s", createdList.Id), &shopping.ShoppingListInput{
+			Name:      aws.String("New Name"),
+			ExpiresIn: aws.Int(hourFromNow),
+		})
+		if 200 != update.StatusCode {
+			t.Errorf("Failed to update, expected 200, got %d: %s", update.StatusCode, update.Body)
+		}
+		if updatedList.ExpiresIn == nil || *updatedList.ExpiresIn != hourFromNow {
+			t.Errorf("Failed to update the shopping list: %s", update.Body)
+		}
+		delete := server.Delete(t, fmt.Sprintf("/lists/%s", createdList.Id))
+		if 204 != delete.StatusCode {
+			t.Errorf("Failed to delete, expected 204, got %d: %s", delete.StatusCode, delete.Body)
+		}
+		getRemoved := server.Get(t, nil, fmt.Sprintf("/lists/%s", createdList.Id))
+		if 404 != getRemoved.StatusCode {
+			t.Errorf("Failed to actually delete, expected 404, got %d: %s", getRemoved.StatusCode, getRemoved.Body)
 		}
 	})
 
