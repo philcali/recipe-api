@@ -9,10 +9,12 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"philcali.me/recipes/internal/dynamodb/services"
+	recipeData "philcali.me/recipes/internal/dynamodb/recipes"
+	shoppingData "philcali.me/recipes/internal/dynamodb/shopping"
 	"philcali.me/recipes/internal/dynamodb/token"
 	"philcali.me/recipes/internal/routes"
 	"philcali.me/recipes/internal/routes/recipes"
+	"philcali.me/recipes/internal/routes/shopping"
 )
 
 type App struct {
@@ -28,7 +30,8 @@ func NewApp() App {
 	client := dynamodb.NewFromConfig(cfg)
 	marshaler := token.NewGCM()
 	router := routes.NewRouter(
-		recipes.NewRoute(services.NewRecipeService(tableName, *client, marshaler)),
+		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
+		shopping.NewRoute(shoppingData.NewShoppingListDynamoDBService(tableName, *client, marshaler)),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to cache all routes: %s", err))
