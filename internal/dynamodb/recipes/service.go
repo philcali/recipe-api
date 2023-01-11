@@ -38,7 +38,9 @@ func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.
 				Name:               *input.Name,
 				Instructions:       *input.Instructions,
 				Ingredients:        *input.Ingredients,
+				Nutrients:          *input.Nutrients,
 				PrepareTimeMinutes: input.PrepareTimeMinutes,
+				NumberOfServings:   input.NumberOfServings,
 				CreateTime:         now,
 				UpdateTime:         now,
 			}
@@ -55,6 +57,12 @@ func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.
 			}
 			if input.PrepareTimeMinutes != nil {
 				update.Set(expression.Name("prepareTimeMinutes"), expression.Value(input.PrepareTimeMinutes))
+			}
+			if input.NumberOfServings != nil {
+				update.Set(expression.Name("numberOfServings"), expression.Value(input.NumberOfServings))
+			}
+			if input.Nutrients != nil {
+				update.Set(expression.Name("nutrients"), expression.Value(input.Nutrients))
 			}
 		},
 	}

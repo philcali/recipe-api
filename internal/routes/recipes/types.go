@@ -13,11 +13,19 @@ type Ingredient struct {
 	Amount      float32 `json:"amount"`
 }
 
+type Nutrient struct {
+	Name   string `json:"name"`
+	Unit   string `json:"unit"`
+	Amount int    `json:"amount"`
+}
+
 type RecipeInput struct {
 	Name               *string       `json:"name"`
 	Instructions       *string       `json:"instructions"`
 	PrepareTimeMinutes *int          `json:"prepareTimeMinutes"`
+	NumberOfServings   *int          `json:"numberOfServings"`
 	Ingredients        *[]Ingredient `json:"ingredients"`
+	Nutrients          *[]Nutrient   `json:"nutrients"`
 }
 
 func ConvertIngredientToData(in Ingredient) data.IngredientDTO {
@@ -42,6 +50,14 @@ func (r *RecipeInput) ToData() data.RecipeInputDTO {
 		Instructions:       r.Instructions,
 		Ingredients:        util.MapOnList(r.Ingredients, ConvertIngredientToData),
 		PrepareTimeMinutes: r.PrepareTimeMinutes,
+		NumberOfServings:   r.NumberOfServings,
+		Nutrients: util.MapOnList(r.Nutrients, func(n Nutrient) data.NutrientDTO {
+			return data.NutrientDTO{
+				Name:   n.Name,
+				Amount: n.Amount,
+				Unit:   n.Unit,
+			}
+		}),
 	}
 }
 
@@ -50,6 +66,8 @@ type Recipe struct {
 	Name               string       `json:"name"`
 	Instructions       string       `json:"instructions"`
 	PrepareTimeMinutes *int         `json:"prepareTimeMinutes"`
+	NumberOfServings   *int         `json:"numberOfServings"`
+	Nutrients          []Nutrient   `json:"nutrients"`
 	Ingredients        []Ingredient `json:"ingredients"`
 	CreateTime         time.Time    `json:"createTime"`
 	UpdateTime         time.Time    `json:"updateTime"`
@@ -63,6 +81,14 @@ func NewRecipe(recipe data.RecipeDTO) Recipe {
 		UpdateTime:         recipe.UpdateTime,
 		PrepareTimeMinutes: recipe.PrepareTimeMinutes,
 		Instructions:       recipe.Instructions,
+		NumberOfServings:   recipe.NumberOfServings,
 		Ingredients:        *util.MapOnList(&recipe.Ingredients, ConvertIngredientDataToTransfer),
+		Nutrients: *util.MapOnList(&recipe.Nutrients, func(nd data.NutrientDTO) Nutrient {
+			return Nutrient{
+				Name:   nd.Name,
+				Unit:   nd.Unit,
+				Amount: nd.Amount,
+			}
+		}),
 	}
 }

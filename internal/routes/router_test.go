@@ -190,8 +190,9 @@ func TestRouter(t *testing.T) {
 	t.Run("RecipeWorkflow", func(t *testing.T) {
 		var createdRecipe recipes.Recipe
 		created := server.Post(t, &createdRecipe, "/recipes", &recipes.RecipeInput{
-			Name:         aws.String("Fart Soup"),
-			Instructions: aws.String("Eat a bowl of beans. Wait for 30 minutes. Fart in mason jar."),
+			Name:             aws.String("Fart Soup"),
+			Instructions:     aws.String("Eat a bowl of beans. Wait for 30 minutes. Fart in mason jar."),
+			NumberOfServings: aws.Int(2),
 			Ingredients: &[]recipes.Ingredient{
 				{
 					Name:        "beans",
@@ -202,6 +203,9 @@ func TestRouter(t *testing.T) {
 		})
 		if 200 != created.StatusCode {
 			t.Fatalf("Response on create %d: %s", created.StatusCode, created.Body)
+		}
+		if *createdRecipe.NumberOfServings != 2 {
+			t.Errorf("Failed to set number of servings, expected 2, got %s", created.Body)
 		}
 		get := server.Get(t, nil, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if 200 != get.StatusCode {
@@ -218,6 +222,18 @@ func TestRouter(t *testing.T) {
 		updated := server.Put(t, nil, fmt.Sprintf("/recipes/%s", createdRecipe.Id), &recipes.RecipeInput{
 			Name:               aws.String("Fart Update"),
 			PrepareTimeMinutes: aws.Int(35),
+			Nutrients: &[]recipes.Nutrient{
+				{
+					Name:   "carbohydrates",
+					Unit:   "gram",
+					Amount: 26,
+				},
+				{
+					Name:   "protein",
+					Unit:   "gram",
+					Amount: 6,
+				},
+			},
 		})
 		if 200 != updated.StatusCode {
 			t.Fatalf("Update response %d: %s", updated.StatusCode, updated.Body)
@@ -229,6 +245,9 @@ func TestRouter(t *testing.T) {
 		}
 		if *getUpdateRecipe.PrepareTimeMinutes < 35 {
 			t.Fatalf("Failed to update %d: %s", getUpdateRecipe.PrepareTimeMinutes, getUpdate.Body)
+		}
+		if len(getUpdateRecipe.Nutrients) < 2 {
+			t.Fatalf("Failed to update %v", getUpdateRecipe.Nutrients)
 		}
 		deleted := server.Delete(t, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if 204 != deleted.StatusCode {
