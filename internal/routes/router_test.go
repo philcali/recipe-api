@@ -259,16 +259,18 @@ func TestRouter(t *testing.T) {
 		var createdList shopping.ShoppingList
 		created := server.Post(t, &createdList, "/lists", &shopping.ShoppingListInput{
 			Name: aws.String("My List"),
-			Items: &[]recipes.Ingredient{
+			Items: &[]shopping.ShoppingListItem{
 				{
 					Name:        "bread",
 					Measurement: "loaf",
 					Amount:      1,
+					Completed:   false,
 				},
 				{
 					Name:        "milk",
 					Measurement: "gallon",
 					Amount:      1,
+					Completed:   false,
 				},
 			},
 		})
@@ -292,28 +294,24 @@ func TestRouter(t *testing.T) {
 		update := server.Put(t, &updatedList, fmt.Sprintf("/lists/%s", createdList.Id), &shopping.ShoppingListInput{
 			Name:      aws.String("New Name"),
 			ExpiresIn: &hourFromNow,
-			Items: &[]recipes.Ingredient{
+			Items: &[]shopping.ShoppingListItem{
 				{
 					Name:        "bread",
 					Measurement: "loaf",
 					Amount:      1,
+					Completed:   true,
 				},
 				{
 					Name:        "milk",
 					Measurement: "gallon",
 					Amount:      1,
+					Completed:   true,
 				},
 				{
 					Name:        "eggs",
 					Measurement: "whole",
 					Amount:      12,
-				},
-			},
-			CompletedItems: &[]recipes.Ingredient{
-				{
-					Name:        "bread",
-					Measurement: "loaf",
-					Amount:      1,
+					Completed:   false,
 				},
 			},
 		})
@@ -325,9 +323,6 @@ func TestRouter(t *testing.T) {
 		}
 		if len(updatedList.Items) < 3 {
 			t.Errorf("Failed to update the shopping list %v: %s", updatedList.Items, update.Body)
-		}
-		if len(updatedList.CompletedItems) < 1 {
-			t.Errorf("Failed to update the shopping list completed %v: %s", updatedList.CompletedItems, update.Body)
 		}
 		delete := server.Delete(t, fmt.Sprintf("/lists/%s", createdList.Id))
 		if 204 != delete.StatusCode {
