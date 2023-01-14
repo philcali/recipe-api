@@ -30,7 +30,7 @@ func (l *ShoppingListInput) ToData() data.ShoppingListInputDTO {
 type ShoppingList struct {
 	Id         string               `json:"listId"`
 	Name       string               `json:"name"`
-	Items      []recipes.Ingredient `json:"ingredients"`
+	Items      []recipes.Ingredient `json:"items"`
 	ExpiresIn  *time.Time           `json:"expiresIn"`
 	CreateTime time.Time            `json:"createTime"`
 	UpdateTime time.Time            `json:"updateTime"`

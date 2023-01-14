@@ -292,12 +292,32 @@ func TestRouter(t *testing.T) {
 		update := server.Put(t, &updatedList, fmt.Sprintf("/lists/%s", createdList.Id), &shopping.ShoppingListInput{
 			Name:      aws.String("New Name"),
 			ExpiresIn: &hourFromNow,
+			Items: &[]recipes.Ingredient{
+				{
+					Name:        "bread",
+					Measurement: "loaf",
+					Amount:      1,
+				},
+				{
+					Name:        "milk",
+					Measurement: "gallon",
+					Amount:      1,
+				},
+				{
+					Name:        "eggs",
+					Measurement: "whole",
+					Amount:      12,
+				},
+			},
 		})
 		if 200 != update.StatusCode {
 			t.Errorf("Failed to update, expected 200, got %d: %s", update.StatusCode, update.Body)
 		}
 		if updatedList.ExpiresIn == nil || updatedList.ExpiresIn.Before(time.Now().Add(time.Minute+55)) {
 			t.Errorf("Failed to update the shopping list %s: %s", updatedList.ExpiresIn, update.Body)
+		}
+		if len(updatedList.Items) < 3 {
+			t.Errorf("Failed to update the shopping list %v: %s", updatedList.Items, update.Body)
 		}
 		delete := server.Delete(t, fmt.Sprintf("/lists/%s", createdList.Id))
 		if 204 != delete.StatusCode {
