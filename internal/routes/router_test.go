@@ -259,16 +259,18 @@ func TestRouter(t *testing.T) {
 		var createdList shopping.ShoppingList
 		created := server.Post(t, &createdList, "/lists", &shopping.ShoppingListInput{
 			Name: aws.String("My List"),
-			Items: &[]recipes.Ingredient{
+			Items: &[]shopping.ShoppingListItem{
 				{
 					Name:        "bread",
 					Measurement: "loaf",
 					Amount:      1,
+					Completed:   false,
 				},
 				{
 					Name:        "milk",
 					Measurement: "gallon",
 					Amount:      1,
+					Completed:   false,
 				},
 			},
 		})
@@ -292,21 +294,24 @@ func TestRouter(t *testing.T) {
 		update := server.Put(t, &updatedList, fmt.Sprintf("/lists/%s", createdList.Id), &shopping.ShoppingListInput{
 			Name:      aws.String("New Name"),
 			ExpiresIn: &hourFromNow,
-			Items: &[]recipes.Ingredient{
+			Items: &[]shopping.ShoppingListItem{
 				{
 					Name:        "bread",
 					Measurement: "loaf",
 					Amount:      1,
+					Completed:   true,
 				},
 				{
 					Name:        "milk",
 					Measurement: "gallon",
 					Amount:      1,
+					Completed:   true,
 				},
 				{
 					Name:        "eggs",
 					Measurement: "whole",
 					Amount:      12,
+					Completed:   false,
 				},
 			},
 		})
