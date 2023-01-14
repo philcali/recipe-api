@@ -3,19 +3,21 @@ package data
 import "time"
 
 type ShoppingListDTO struct {
-	PK         string          `dynamodbav:"PK"`
-	SK         string          `dynamodbav:"SK"`
-	Name       string          `dynamodbav:"name"`
-	Items      []IngredientDTO `dynamodbav:"items"`
-	ExpiresIn  *int            `dynamodbav:"expiresIn"`
-	CreateTime time.Time       `dynamodbav:"createTime"`
-	UpdateTime time.Time       `dynamodbav:"updateTime"`
+	PK             string          `dynamodbav:"PK"`
+	SK             string          `dynamodbav:"SK"`
+	Name           string          `dynamodbav:"name"`
+	Items          []IngredientDTO `dynamodbav:"items"`
+	CompletedItems []IngredientDTO `dynamodbav:"completedItems"`
+	ExpiresIn      *int            `dynamodbav:"expiresIn"`
+	CreateTime     time.Time       `dynamodbav:"createTime"`
+	UpdateTime     time.Time       `dynamodbav:"updateTime"`
 }
 
 type ShoppingListInputDTO struct {
-	Name      *string          `dynamodbav:"name"`
-	Items     *[]IngredientDTO `dynamodbav:"items"`
-	ExpiresIn *int             `dynamodbav:"expiresIn"`
+	Name           *string          `dynamodbav:"name"`
+	Items          *[]IngredientDTO `dynamodbav:"items"`
+	CompletedItems *[]IngredientDTO `dynamodbav:"completedItems"`
+	ExpiresIn      *int             `dynamodbav:"expiresIn"`
 }
 
 type ShoppingListDataService interface {

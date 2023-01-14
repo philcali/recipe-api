@@ -10,9 +10,10 @@ import (
 )
 
 type ShoppingListInput struct {
-	Name      *string               `json:"name"`
-	Items     *[]recipes.Ingredient `json:"items"`
-	ExpiresIn *time.Time            `json:"expiresIn"`
+	Name           *string               `json:"name"`
+	Items          *[]recipes.Ingredient `json:"items"`
+	CompletedItems *[]recipes.Ingredient `json:"completedItems"`
+	ExpiresIn      *time.Time            `json:"expiresIn"`
 }
 
 func (l *ShoppingListInput) ToData() data.ShoppingListInputDTO {
@@ -21,19 +22,21 @@ func (l *ShoppingListInput) ToData() data.ShoppingListInputDTO {
 		expiresIn = int(l.ExpiresIn.Unix())
 	}
 	return data.ShoppingListInputDTO{
-		Name:      l.Name,
-		ExpiresIn: aws.Int(expiresIn),
-		Items:     util.MapOnList(l.Items, recipes.ConvertIngredientToData),
+		Name:           l.Name,
+		ExpiresIn:      aws.Int(expiresIn),
+		Items:          util.MapOnList(l.Items, recipes.ConvertIngredientToData),
+		CompletedItems: util.MapOnList(l.CompletedItems, recipes.ConvertIngredientToData),
 	}
 }
 
 type ShoppingList struct {
-	Id         string               `json:"listId"`
-	Name       string               `json:"name"`
-	Items      []recipes.Ingredient `json:"items"`
-	ExpiresIn  *time.Time           `json:"expiresIn"`
-	CreateTime time.Time            `json:"createTime"`
-	UpdateTime time.Time            `json:"updateTime"`
+	Id             string               `json:"listId"`
+	Name           string               `json:"name"`
+	Items          []recipes.Ingredient `json:"items"`
+	CompletedItems []recipes.Ingredient `json:"completedItems"`
+	ExpiresIn      *time.Time           `json:"expiresIn"`
+	CreateTime     time.Time            `json:"createTime"`
+	UpdateTime     time.Time            `json:"updateTime"`
 }
 
 func NewShoppingList(list data.ShoppingListDTO) ShoppingList {
@@ -42,11 +45,12 @@ func NewShoppingList(list data.ShoppingListDTO) ShoppingList {
 		expiresIn = time.Unix(int64(*list.ExpiresIn), 0)
 	}
 	return ShoppingList{
-		Id:         list.SK,
-		Name:       list.Name,
-		CreateTime: list.CreateTime,
-		UpdateTime: list.UpdateTime,
-		ExpiresIn:  &expiresIn,
-		Items:      *util.MapOnList(&list.Items, recipes.ConvertIngredientDataToTransfer),
+		Id:             list.SK,
+		Name:           list.Name,
+		CreateTime:     list.CreateTime,
+		UpdateTime:     list.UpdateTime,
+		ExpiresIn:      &expiresIn,
+		Items:          *util.MapOnList(&list.Items, recipes.ConvertIngredientDataToTransfer),
+		CompletedItems: *util.MapOnList(&list.CompletedItems, recipes.ConvertIngredientDataToTransfer),
 	}
 }

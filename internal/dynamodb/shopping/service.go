@@ -49,6 +49,9 @@ func NewShoppingListDynamoDBService(tableName string, client dynamodb.Client, ma
 			if slid.Items != nil {
 				ub.Set(expression.Name("items"), expression.Value(slid.Items))
 			}
+			if slid.CompletedItems != nil {
+				ub.Set(expression.Name("completedItems"), expression.Value(slid.CompletedItems))
+			}
 		},
 		Shim: func(pk, sk string) data.ShoppingListDTO {
 			return data.ShoppingListDTO{PK: pk, SK: sk}

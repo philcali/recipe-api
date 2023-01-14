@@ -309,6 +309,13 @@ func TestRouter(t *testing.T) {
 					Amount:      12,
 				},
 			},
+			CompletedItems: &[]recipes.Ingredient{
+				{
+					Name:        "bread",
+					Measurement: "loaf",
+					Amount:      1,
+				},
+			},
 		})
 		if 200 != update.StatusCode {
 			t.Errorf("Failed to update, expected 200, got %d: %s", update.StatusCode, update.Body)
@@ -318,6 +325,9 @@ func TestRouter(t *testing.T) {
 		}
 		if len(updatedList.Items) < 3 {
 			t.Errorf("Failed to update the shopping list %v: %s", updatedList.Items, update.Body)
+		}
+		if len(updatedList.CompletedItems) < 1 {
+			t.Errorf("Failed to update the shopping list completed %v: %s", updatedList.CompletedItems, update.Body)
 		}
 		delete := server.Delete(t, fmt.Sprintf("/lists/%s", createdList.Id))
 		if 204 != delete.StatusCode {
