@@ -21,6 +21,7 @@ type RecipeDTO struct {
 	SK                 string          `dynamodbav:"SK"`
 	Name               string          `dynamodbav:"name"`
 	Instructions       string          `dynamodbav:"instructions"`
+	Thumbnail          *string         `dynamodbav:"thumbnail"`
 	Ingredients        []IngredientDTO `dynamodbav:"ingredients"`
 	Nutrients          []NutrientDTO   `dynamodbav:"nutrients"`
 	PrepareTimeMinutes *int            `dynamodbav:"prepareTimeMinutes"`
@@ -32,6 +33,7 @@ type RecipeDTO struct {
 type RecipeInputDTO struct {
 	Name               *string          `dynamodbav:"name"`
 	Instructions       *string          `dynamodbav:"instructions"`
+	Thumbnail          *string          `dynamodbav:"thumbnail"`
 	Ingredients        *[]IngredientDTO `dynamodbav:"ingredients"`
 	Nutrients          *[]NutrientDTO   `dynamodbav:"nutrients"`
 	PrepareTimeMinutes *int             `dynamodbav:"prepareTimeMinutes"`
