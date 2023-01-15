@@ -202,26 +202,27 @@ func TestRouter(t *testing.T) {
 			},
 		})
 		if 200 != created.StatusCode {
-			t.Fatalf("Response on create %d: %s", created.StatusCode, created.Body)
+			t.Errorf("Response on create %d: %s", created.StatusCode, created.Body)
 		}
 		if *createdRecipe.NumberOfServings != 2 {
 			t.Errorf("Failed to set number of servings, expected 2, got %s", created.Body)
 		}
 		get := server.Get(t, nil, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if 200 != get.StatusCode {
-			t.Fatalf("Response failed with status %d: %s", get.StatusCode, get.Body)
+			t.Errorf("Response failed with status %d: %s", get.StatusCode, get.Body)
 		}
 		if created.Body != get.Body {
-			t.Fatalf("Get response does not match create: %s != %s", get.Body, created.Body)
+			t.Errorf("Get response does not match create: %s != %s", get.Body, created.Body)
 		}
 		var results data.QueryResults[recipes.Recipe]
 		list := server.Get(t, &results, "/recipes")
 		if len(results.Items) < 1 || createdRecipe.Id != results.Items[0].Id || createdRecipe.Ingredients[0].Amount != 1.5 {
-			t.Fatalf("List does not contain %s: %s", created.Body, list.Body)
+			t.Errorf("List does not contain %s: %s", created.Body, list.Body)
 		}
 		updated := server.Put(t, nil, fmt.Sprintf("/recipes/%s", createdRecipe.Id), &recipes.RecipeInput{
 			Name:               aws.String("Fart Update"),
 			PrepareTimeMinutes: aws.Int(35),
+			Thumbnail:          aws.String("this would normally be base64 encoded"),
 			Nutrients: &[]recipes.Nutrient{
 				{
 					Name:   "carbohydrates",
@@ -236,22 +237,25 @@ func TestRouter(t *testing.T) {
 			},
 		})
 		if 200 != updated.StatusCode {
-			t.Fatalf("Update response %d: %s", updated.StatusCode, updated.Body)
+			t.Errorf("Update response %d: %s", updated.StatusCode, updated.Body)
 		}
 		var getUpdateRecipe recipes.Recipe
 		getUpdate := server.Get(t, &getUpdateRecipe, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if getUpdateRecipe.Name != "Fart Update" {
-			t.Fatalf("Failed to update %s: %s", getUpdateRecipe.Name, getUpdate.Body)
+			t.Errorf("Failed to update %s: %s", getUpdateRecipe.Name, getUpdate.Body)
 		}
 		if *getUpdateRecipe.PrepareTimeMinutes < 35 {
-			t.Fatalf("Failed to update %d: %s", getUpdateRecipe.PrepareTimeMinutes, getUpdate.Body)
+			t.Errorf("Failed to update %d: %s", getUpdateRecipe.PrepareTimeMinutes, getUpdate.Body)
 		}
 		if len(getUpdateRecipe.Nutrients) < 2 {
-			t.Fatalf("Failed to update %v", getUpdateRecipe.Nutrients)
+			t.Errorf("Failed to update %v", getUpdateRecipe.Nutrients)
+		}
+		if *getUpdateRecipe.Thumbnail != "this would normally be base64 encoded" {
+			t.Errorf("Failed to update %s, %s", getUpdateRecipe.Name, getUpdate.Body)
 		}
 		deleted := server.Delete(t, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if 204 != deleted.StatusCode {
-			t.Fatalf("Response on delete %d: %s", deleted.StatusCode, deleted.Body)
+			t.Errorf("Response on delete %d: %s", deleted.StatusCode, deleted.Body)
 		}
 	})
 
