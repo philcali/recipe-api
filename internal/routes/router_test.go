@@ -193,6 +193,7 @@ func TestRouter(t *testing.T) {
 			Name:             aws.String("Fart Soup"),
 			Instructions:     aws.String("Eat a bowl of beans. Wait for 30 minutes. Fart in mason jar."),
 			NumberOfServings: aws.Int(2),
+			Type:             aws.String("Food"),
 			Ingredients: &[]recipes.Ingredient{
 				{
 					Name:        "beans",
@@ -223,6 +224,7 @@ func TestRouter(t *testing.T) {
 			Name:               aws.String("Fart Update"),
 			PrepareTimeMinutes: aws.Int(35),
 			Thumbnail:          aws.String("this would normally be base64 encoded"),
+			Type:               aws.String("Drink"),
 			Nutrients: &[]recipes.Nutrient{
 				{
 					Name:   "carbohydrates",
@@ -251,7 +253,10 @@ func TestRouter(t *testing.T) {
 			t.Errorf("Failed to update %v", getUpdateRecipe.Nutrients)
 		}
 		if *getUpdateRecipe.Thumbnail != "this would normally be base64 encoded" {
-			t.Errorf("Failed to update %s, %s", getUpdateRecipe.Name, getUpdate.Body)
+			t.Errorf("Failed to update thumbnail %s, %s", getUpdateRecipe.Name, getUpdate.Body)
+		}
+		if *getUpdateRecipe.Type != "Drink" {
+			t.Errorf("Failed to update type %s, %s", getUpdateRecipe.Name, getUpdate.Body)
 		}
 		deleted := server.Delete(t, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if 204 != deleted.StatusCode {
