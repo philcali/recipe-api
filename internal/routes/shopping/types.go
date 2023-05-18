@@ -22,13 +22,13 @@ type ShoppingListInput struct {
 }
 
 func (l *ShoppingListInput) ToData() data.ShoppingListInputDTO {
-	var expiresIn int
+	var expiresIn *int
 	if l.ExpiresIn != nil {
-		expiresIn = int(l.ExpiresIn.Unix())
+		expiresIn = aws.Int(int(l.ExpiresIn.Unix()))
 	}
 	return data.ShoppingListInputDTO{
 		Name:      l.Name,
-		ExpiresIn: aws.Int(expiresIn),
+		ExpiresIn: expiresIn,
 		Items: util.MapOnList(l.Items, func(sli ShoppingListItem) data.ShoppingListItemDTO {
 			return data.ShoppingListItemDTO{
 				Name:        sli.Name,
