@@ -16,13 +16,13 @@ type ShoppingListItem struct {
 }
 
 type ShoppingListInput struct {
-	Name      *string             `json:"name"`
-	Items     *[]ShoppingListItem `json:"items"`
-	ExpiresIn *time.Time          `json:"expiresIn"`
+	Name      *string             `json:"name,omitempty"`
+	Items     *[]ShoppingListItem `json:"items,omitempty"`
+	ExpiresIn *time.Time          `json:"expiresIn,omitempty"`
 }
 
 func (l *ShoppingListInput) ToData() data.ShoppingListInputDTO {
-	var expiresIn *int
+	var expiresIn *int = nil
 	if l.ExpiresIn != nil {
 		expiresIn = aws.Int(int(l.ExpiresIn.Unix()))
 	}
@@ -44,22 +44,22 @@ type ShoppingList struct {
 	Id         string             `json:"listId"`
 	Name       string             `json:"name"`
 	Items      []ShoppingListItem `json:"items"`
-	ExpiresIn  *time.Time         `json:"expiresIn"`
+	ExpiresIn  *time.Time         `json:"expiresIn,omitempty"`
 	CreateTime time.Time          `json:"createTime"`
 	UpdateTime time.Time          `json:"updateTime"`
 }
 
 func NewShoppingList(list data.ShoppingListDTO) ShoppingList {
-	var expiresIn time.Time
+	var expiresIn *time.Time = nil
 	if list.ExpiresIn != nil {
-		expiresIn = time.Unix(int64(*list.ExpiresIn), 0)
+		expiresIn = aws.Time(time.Unix(int64(*list.ExpiresIn), 0))
 	}
 	return ShoppingList{
 		Id:         list.SK,
 		Name:       list.Name,
 		CreateTime: list.CreateTime,
 		UpdateTime: list.UpdateTime,
-		ExpiresIn:  &expiresIn,
+		ExpiresIn:  expiresIn,
 		Items: *util.MapOnList(&list.Items, func(slid data.ShoppingListItemDTO) ShoppingListItem {
 			return ShoppingListItem{
 				Name:        slid.Name,
