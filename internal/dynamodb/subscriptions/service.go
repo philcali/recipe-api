@@ -9,12 +9,6 @@ import (
 	"philcali.me/recipes/internal/dynamodb/token"
 )
 
-type SubscriptionDynamoDBService struct {
-	DynamoDB       dynamodb.Client
-	TableName      string
-	TokenMarshaler token.TokenMarshaler
-}
-
 func NewSubscriptionDynamoDBService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.Repository[data.SubscriptionDTO, data.SubscriptionInputDTO] {
 	return &services.RepositoryDynamoDBService[data.SubscriptionDTO, data.SubscriptionInputDTO]{
 		DynamoDB:       client,

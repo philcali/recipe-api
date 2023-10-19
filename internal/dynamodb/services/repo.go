@@ -84,8 +84,12 @@ func (rs *RepositoryDynamoDBService[T, I]) List(accountId string, params data.Qu
 
 func (rs *RepositoryDynamoDBService[T, I]) Create(accountId string, input I) (T, error) {
 	gid, _ := uuid.NewUUID()
+	return rs.CreateWithItemId(accountId, input, gid.String())
+}
+
+func (rs *RepositoryDynamoDBService[T, I]) CreateWithItemId(accountId string, input I, itemId string) (T, error) {
 	now := time.Now()
-	shim := rs.OnCreate(input, now, _getPrimaryKey(accountId, rs.Name), gid.String())
+	shim := rs.OnCreate(input, now, _getPrimaryKey(accountId, rs.Name), itemId)
 	item, err := attributevalue.MarshalMap(shim)
 	if err != nil {
 		return shim, err
