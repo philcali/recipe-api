@@ -10,12 +10,6 @@ import (
 	"philcali.me/recipes/internal/dynamodb/token"
 )
 
-type RecipeDynamoDBService struct {
-	DynamoDB       dynamodb.Client
-	TableName      string
-	TokenMarshaler token.TokenMarshaler
-}
-
 func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.Repository[data.RecipeDTO, data.RecipeInputDTO] {
 	return &services.RepositoryDynamoDBService[data.RecipeDTO, data.RecipeInputDTO]{
 		DynamoDB:       client,
