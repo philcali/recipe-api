@@ -17,14 +17,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/google/uuid"
 	"golang.org/x/exp/maps"
 	"philcali.me/recipes/internal/data"
 	recipeData "philcali.me/recipes/internal/dynamodb/recipes"
 	shoppingData "philcali.me/recipes/internal/dynamodb/shopping"
+	subscriberData "philcali.me/recipes/internal/dynamodb/subscriptions"
 	"philcali.me/recipes/internal/dynamodb/token"
+	"philcali.me/recipes/internal/notifications"
 	"philcali.me/recipes/internal/routes"
 	"philcali.me/recipes/internal/routes/recipes"
 	"philcali.me/recipes/internal/routes/shopping"
+	"philcali.me/recipes/internal/routes/subscriptions"
 )
 
 const LOCAL_DDB_PORT = 8000
@@ -121,6 +125,12 @@ func NewLocalServer(t *testing.T) *LocalServer {
 	router := routes.NewRouter(
 		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
 		shopping.NewRoute(shoppingData.NewShoppingListDynamoDBService(tableName, *client, marshaler)),
+		subscriptions.NewRoute(
+			subscriberData.NewSubscriptionDynamoDBService(tableName, *client, marshaler),
+			&LocalNotifications{
+				Cache: make(map[string]notifications.SubscribeInput),
+			},
+		),
 	)
 	if err != nil {
 		t.Fatalf("Failed to create a router: %s", err)
@@ -128,6 +138,26 @@ func NewLocalServer(t *testing.T) *LocalServer {
 	return &LocalServer{
 		Router: router,
 	}
+}
+
+type LocalNotifications struct {
+	Cache map[string]notifications.SubscribeInput
+}
+
+func (ln *LocalNotifications) Subscribe(input notifications.SubscribeInput) (*notifications.SubscribeOutput, error) {
+	id, err := uuid.NewUUID()
+	if err != nil {
+		return nil, err
+	}
+	ln.Cache[id.String()] = input
+	return &notifications.SubscribeOutput{
+		SubscriberId: id.String(),
+	}, nil
+}
+
+func (ln *LocalNotifications) Unsubscribe(subscriberId string) error {
+	delete(ln.Cache, subscriberId)
+	return nil
 }
 
 type LocalServer struct {
@@ -203,22 +233,22 @@ func TestRouter(t *testing.T) {
 			},
 		})
 		if 200 != created.StatusCode {
-			t.Errorf("Response on create %d: %s", created.StatusCode, created.Body)
+			t.Fatalf("Response on create %d: %s", created.StatusCode, created.Body)
 		}
 		if *createdRecipe.NumberOfServings != 2 {
-			t.Errorf("Failed to set number of servings, expected 2, got %s", created.Body)
+			t.Fatalf("Failed to set number of servings, expected 2, got %s", created.Body)
 		}
 		get := server.Get(t, nil, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if 200 != get.StatusCode {
-			t.Errorf("Response failed with status %d: %s", get.StatusCode, get.Body)
+			t.Fatalf("Response failed with status %d: %s", get.StatusCode, get.Body)
 		}
 		if created.Body != get.Body {
-			t.Errorf("Get response does not match create: %s != %s", get.Body, created.Body)
+			t.Fatalf("Get response does not match create: %s != %s", get.Body, created.Body)
 		}
 		var results data.QueryResults[recipes.Recipe]
 		list := server.Get(t, &results, "/recipes")
 		if len(results.Items) < 1 || createdRecipe.Id != results.Items[0].Id || createdRecipe.Ingredients[0].Amount != 1.5 {
-			t.Errorf("List does not contain %s: %s", created.Body, list.Body)
+			t.Fatalf("List does not contain %s: %s", created.Body, list.Body)
 		}
 		updated := server.Put(t, nil, fmt.Sprintf("/recipes/%s", createdRecipe.Id), &recipes.RecipeInput{
 			Name:               aws.String("Fart Update"),
@@ -239,28 +269,28 @@ func TestRouter(t *testing.T) {
 			},
 		})
 		if 200 != updated.StatusCode {
-			t.Errorf("Update response %d: %s", updated.StatusCode, updated.Body)
+			t.Fatalf("Update response %d: %s", updated.StatusCode, updated.Body)
 		}
 		var getUpdateRecipe recipes.Recipe
 		getUpdate := server.Get(t, &getUpdateRecipe, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if getUpdateRecipe.Name != "Fart Update" {
-			t.Errorf("Failed to update %s: %s", getUpdateRecipe.Name, getUpdate.Body)
+			t.Fatalf("Failed to update %s: %s", getUpdateRecipe.Name, getUpdate.Body)
 		}
 		if *getUpdateRecipe.PrepareTimeMinutes < 35 {
-			t.Errorf("Failed to update %d: %s", getUpdateRecipe.PrepareTimeMinutes, getUpdate.Body)
+			t.Fatalf("Failed to update %d: %s", getUpdateRecipe.PrepareTimeMinutes, getUpdate.Body)
 		}
 		if len(getUpdateRecipe.Nutrients) < 2 {
-			t.Errorf("Failed to update %v", getUpdateRecipe.Nutrients)
+			t.Fatalf("Failed to update %v", getUpdateRecipe.Nutrients)
 		}
 		if *getUpdateRecipe.Thumbnail != "this would normally be base64 encoded" {
-			t.Errorf("Failed to update thumbnail %s, %s", getUpdateRecipe.Name, getUpdate.Body)
+			t.Fatalf("Failed to update thumbnail %s, %s", getUpdateRecipe.Name, getUpdate.Body)
 		}
 		if *getUpdateRecipe.Type != "Drink" {
-			t.Errorf("Failed to update type %s, %s", getUpdateRecipe.Name, getUpdate.Body)
+			t.Fatalf("Failed to update type %s, %s", getUpdateRecipe.Name, getUpdate.Body)
 		}
 		deleted := server.Delete(t, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
 		if 204 != deleted.StatusCode {
-			t.Errorf("Response on delete %d: %s", deleted.StatusCode, deleted.Body)
+			t.Fatalf("Response on delete %d: %s", deleted.StatusCode, deleted.Body)
 		}
 	})
 
@@ -284,19 +314,19 @@ func TestRouter(t *testing.T) {
 			},
 		})
 		if 200 != created.StatusCode {
-			t.Errorf("Failed to create shopping list, expected 200 got %d: %s", created.StatusCode, created.Body)
+			t.Fatalf("Failed to create shopping list, expected 200 got %d: %s", created.StatusCode, created.Body)
 		}
 		get := server.Get(t, nil, fmt.Sprintf("/lists/%s", createdList.Id))
 		if 200 != get.StatusCode {
-			t.Errorf("Failed to get new list %s, expected 200 got %d: %s", createdList.Id, get.StatusCode, get.Body)
+			t.Fatalf("Failed to get new list %s, expected 200 got %d: %s", createdList.Id, get.StatusCode, get.Body)
 		}
 		if get.Body != created.Body {
-			t.Errorf("Expected body, expected %s got %s", created.Body, get.Body)
+			t.Fatalf("Expected body, expected %s got %s", created.Body, get.Body)
 		}
 		var results data.QueryResults[shopping.ShoppingList]
 		list := server.Get(t, &results, "/lists")
 		if len(results.Items) < 1 {
-			t.Errorf("Failed to query for lists, expected 1 got %v", list)
+			t.Fatalf("Failed to query for lists, expected 1 got %v", list)
 		}
 		hourFromNow := time.Now().Add(time.Hour + 1)
 		var updatedList shopping.ShoppingList
@@ -325,21 +355,64 @@ func TestRouter(t *testing.T) {
 			},
 		})
 		if 200 != update.StatusCode {
-			t.Errorf("Failed to update, expected 200, got %d: %s", update.StatusCode, update.Body)
+			t.Fatalf("Failed to update, expected 200, got %d: %s", update.StatusCode, update.Body)
 		}
 		if updatedList.ExpiresIn == nil || updatedList.ExpiresIn.Before(time.Now().Add(time.Minute+55)) {
-			t.Errorf("Failed to update the shopping list %s: %s", updatedList.ExpiresIn, update.Body)
+			t.Fatalf("Failed to update the shopping list %s: %s", updatedList.ExpiresIn, update.Body)
 		}
 		if len(updatedList.Items) < 3 {
-			t.Errorf("Failed to update the shopping list %v: %s", updatedList.Items, update.Body)
+			t.Fatalf("Failed to update the shopping list %v: %s", updatedList.Items, update.Body)
 		}
 		delete := server.Delete(t, fmt.Sprintf("/lists/%s", createdList.Id))
 		if 204 != delete.StatusCode {
-			t.Errorf("Failed to delete, expected 204, got %d: %s", delete.StatusCode, delete.Body)
+			t.Fatalf("Failed to delete, expected 204, got %d: %s", delete.StatusCode, delete.Body)
 		}
 		getRemoved := server.Get(t, nil, fmt.Sprintf("/lists/%s", createdList.Id))
 		if 404 != getRemoved.StatusCode {
-			t.Errorf("Failed to actually delete, expected 404, got %d: %s", getRemoved.StatusCode, getRemoved.Body)
+			t.Fatalf("Failed to actually delete, expected 404, got %d: %s", getRemoved.StatusCode, getRemoved.Body)
+		}
+	})
+
+	t.Run("SubscriptionWorkflow", func(t *testing.T) {
+		var createdSubscriber subscriptions.Subscription
+		created := server.Post(t, &createdSubscriber, "/subscriptions", &subscriptions.SubscriptionInput{
+			Endpoint: aws.String("philcali@example.com"),
+			Protocol: aws.String("email"),
+		})
+
+		if 200 != created.StatusCode {
+			t.Fatalf("Failed to create a subscription: %s", created.Body)
+		}
+
+		if createdSubscriber.Endpoint != "philcali@example.com" {
+			t.Fatalf("Failed to respond with subscription: %v", createdSubscriber)
+		}
+
+		var listSubscribers data.QueryResults[subscriptions.Subscription]
+		listResp := server.Get(t, listSubscribers, "/subscriptions")
+		if 200 != listResp.StatusCode {
+			t.Fatalf("Failed to list subscriptions: %v", listResp.Body)
+		}
+
+		if len(listSubscribers.Items) == 1 {
+			t.Fatalf("Failed to list the appropriate amount: %v", listSubscribers.Items)
+		}
+
+		var getSubscriber subscriptions.Subscription
+		getResp := server.Get(t, &getSubscriber, "/subscriptions/"+createdSubscriber.Id)
+
+		if 200 != getResp.StatusCode {
+			t.Fatalf("Failed to get subscriber: %s", getResp.Body)
+		}
+
+		if getSubscriber.Id != createdSubscriber.Id {
+			t.Fatalf("Failed to get the id: %s", createdSubscriber.Id)
+		}
+
+		deleteResp := server.Delete(t, "/subscriptions/"+createdSubscriber.Id)
+
+		if 204 != deleteResp.StatusCode {
+			t.Fatalf("Failed to delete the subscriber: %s, %v", createdSubscriber.Id, deleteResp.Body)
 		}
 	})
 
@@ -355,10 +428,10 @@ func TestRouter(t *testing.T) {
 	t.Run("CorsPreflight", func(t *testing.T) {
 		preflight := server.Options(t, "/recipes")
 		if 200 != preflight.StatusCode {
-			t.Errorf("Received a %d status code, expected 200", preflight.StatusCode)
+			t.Fatalf("Received a %d status code, expected 200", preflight.StatusCode)
 		}
 		if preflight.Body != "" {
-			t.Errorf("Received a response body for OPTIONS: %s", preflight.Body)
+			t.Fatalf("Received a response body for OPTIONS: %s", preflight.Body)
 		}
 		expected := map[string]string{
 			"content-length":               "0",
@@ -367,7 +440,7 @@ func TestRouter(t *testing.T) {
 			"access-control-allow-origin":  "*",
 		}
 		if !maps.Equal(preflight.Headers, expected) {
-			t.Errorf("Headers from preflight %v, do not match expected %v", preflight.Headers, expected)
+			t.Fatalf("Headers from preflight %v, do not match expected %v", preflight.Headers, expected)
 		}
 	})
 }
