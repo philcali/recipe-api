@@ -11,7 +11,8 @@ import (
 )
 
 func NewUserService(t *testing.T) data.UserService {
-	client, err := test.CreateLocalClient()
+	localServer := test.StartLocalServer(test.LOCAL_DDB_PORT+2, t)
+	client, err := localServer.CreateLocalClient()
 	if err != nil {
 		t.Fatalf("Failed to create DDB client: %s", err)
 	}
@@ -28,8 +29,6 @@ func NewUserService(t *testing.T) data.UserService {
 }
 
 func TestEvents(t *testing.T) {
-	test.StartLocalServer(t)
-
 	userData := NewUserService(t)
 
 	t.Run("ManagedUserHandler", func(t *testing.T) {

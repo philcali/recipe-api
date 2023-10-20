@@ -27,7 +27,8 @@ import (
 )
 
 func NewLocalServer(t *testing.T) *LocalServer {
-	client, err := test.CreateLocalClient()
+	localServer := test.StartLocalServer(test.LOCAL_DDB_PORT+1, t)
+	client, err := localServer.CreateLocalClient()
 	if err != nil {
 		t.Fatalf("Failed to create DDB client: %s", err)
 	}
@@ -130,7 +131,6 @@ func (ls *LocalServer) Put(t *testing.T, out any, path string, body any) events.
 }
 
 func TestRouter(t *testing.T) {
-	test.StartLocalServer(t)
 	server := NewLocalServer(t)
 	t.Run("RecipeWorkflow", func(t *testing.T) {
 		var createdRecipe recipes.Recipe
