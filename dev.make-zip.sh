@@ -2,5 +2,7 @@
 
 set -e
 
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -tags lambda.norpc -o bootstrap cmd/recipes/main.go
+ENTRYPOINT="${1:-"cmd/recipes/main.go"}"
+
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -tags lambda.norpc -o bootstrap "$ENTRYPOINT"
 zip build_function.zip bootstrap

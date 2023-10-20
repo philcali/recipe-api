@@ -5,18 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 	"golang.org/x/exp/maps"
 	"philcali.me/recipes/internal/data"
@@ -29,104 +23,26 @@ import (
 	"philcali.me/recipes/internal/routes/recipes"
 	"philcali.me/recipes/internal/routes/shopping"
 	"philcali.me/recipes/internal/routes/subscriptions"
+	"philcali.me/recipes/internal/test"
 )
 
-const LOCAL_DDB_PORT = 8000
-
-func _createTable(client *dynamodb.Client) (string, error) {
-	keySchema := []types.KeySchemaElement{
-		{
-			AttributeName: aws.String("PK"),
-			KeyType:       types.KeyTypeHash,
-		},
-		{
-			AttributeName: aws.String("SK"),
-			KeyType:       types.KeyTypeRange,
-		},
-	}
-	atrributes := []types.AttributeDefinition{
-		{
-			AttributeName: aws.String("PK"),
-			AttributeType: types.ScalarAttributeTypeS,
-		},
-		{
-			AttributeName: aws.String("SK"),
-			AttributeType: types.ScalarAttributeTypeS,
-		},
-	}
-	output, err := client.CreateTable(context.TODO(), &dynamodb.CreateTableInput{
-		TableName:            aws.String("RecipeData"),
-		KeySchema:            keySchema,
-		BillingMode:          types.BillingModePayPerRequest,
-		AttributeDefinitions: atrributes,
-	})
-	if err != nil {
-		return "", err
-	}
-	waiter := dynamodb.NewTableExistsWaiter(client, func(tewo *dynamodb.TableExistsWaiterOptions) {
-		tewo.LogWaitAttempts = true
-	})
-	_, err = waiter.WaitForOutput(context.TODO(), &dynamodb.DescribeTableInput{
-		TableName: output.TableDescription.TableName,
-	}, time.Second*5)
-	return *output.TableDescription.TableName, err
-}
-
-func _createLocalClient() (*dynamodb.Client, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRetryMaxAttempts(10),
-		config.WithRegion("us-east-1"),
-		config.WithEndpointResolver(aws.EndpointResolverFunc(
-			func(service, region string) (aws.Endpoint, error) {
-				return aws.Endpoint{URL: fmt.Sprintf("http://localhost:%d", LOCAL_DDB_PORT)}, nil
-			})),
-		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
-			Value: aws.Credentials{
-				AccessKeyID:     "fake",
-				SecretAccessKey: "fake",
-				SessionToken:    "fake",
-			}}),
-	)
-	if err != nil {
-		return nil, err
-	}
-	return dynamodb.NewFromConfig(cfg), nil
-}
-
-func _startLocalServer(t *testing.T) {
-	workingDir := os.Getenv("PWD")
-	cmd := exec.Command(
-		"java", fmt.Sprintf("-Djava.library.path=%s/../../dynamodb/DynamoDBLocal_list", workingDir),
-		"-jar", fmt.Sprintf("%s/../../dynamodb/DynamoDBLocal.jar", workingDir),
-		"-port", strconv.Itoa(LOCAL_DDB_PORT),
-		"-inMemory",
-	)
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("Failed to start local DDB server: %s", err)
-	}
-	t.Cleanup(func() {
-		if err := cmd.Process.Kill(); err != nil {
-			t.Fatalf("Failed to terminate local DDB server: %s", err)
-		}
-	})
-}
-
 func NewLocalServer(t *testing.T) *LocalServer {
-	client, err := _createLocalClient()
+	localServer := test.StartLocalServer(test.LOCAL_DDB_PORT+1, t)
+	client, err := localServer.CreateLocalClient()
 	if err != nil {
 		t.Fatalf("Failed to create DDB client: %s", err)
 	}
-	tableName, err := _createTable(client)
+	tableName, err := test.CreateTable(client)
 	if err != nil {
 		t.Fatalf("Failed to create DDB table: %s", err)
 	}
-	t.Logf("Successfully created local resources running on %d", LOCAL_DDB_PORT)
+	t.Logf("Successfully created local resources running on %d", test.LOCAL_DDB_PORT)
 	marshaler := token.NewGCM()
 	router := routes.NewRouter(
 		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
-		shopping.NewRoute(shoppingData.NewShoppingListDynamoDBService(tableName, *client, marshaler)),
+		shopping.NewRoute(shoppingData.NewShoppingListService(tableName, *client, marshaler)),
 		subscriptions.NewRoute(
-			subscriberData.NewSubscriptionDynamoDBService(tableName, *client, marshaler),
+			subscriberData.NewSubscriptionService(tableName, *client, marshaler),
 			&LocalNotifications{
 				Cache: make(map[string]notifications.SubscribeInput),
 			},
@@ -215,7 +131,6 @@ func (ls *LocalServer) Put(t *testing.T, out any, path string, body any) events.
 }
 
 func TestRouter(t *testing.T) {
-	_startLocalServer(t)
 	server := NewLocalServer(t)
 	t.Run("RecipeWorkflow", func(t *testing.T) {
 		var createdRecipe recipes.Recipe

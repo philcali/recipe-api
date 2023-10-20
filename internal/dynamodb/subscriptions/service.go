@@ -9,7 +9,7 @@ import (
 	"philcali.me/recipes/internal/dynamodb/token"
 )
 
-func NewSubscriptionDynamoDBService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.Repository[data.SubscriptionDTO, data.SubscriptionInputDTO] {
+func NewSubscriptionService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.Repository[data.SubscriptionDTO, data.SubscriptionInputDTO] {
 	return &services.RepositoryDynamoDBService[data.SubscriptionDTO, data.SubscriptionInputDTO]{
 		DynamoDB:       client,
 		TableName:      tableName,

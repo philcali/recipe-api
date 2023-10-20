@@ -37,9 +37,9 @@ func NewApp() App {
 	marshaler := token.NewGCM()
 	router := routes.NewRouter(
 		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
-		shopping.NewRoute(shoppingData.NewShoppingListDynamoDBService(tableName, *client, marshaler)),
+		shopping.NewRoute(shoppingData.NewShoppingListService(tableName, *client, marshaler)),
 		subscriptions.NewRoute(
-			subscriberData.NewSubscriptionDynamoDBService(tableName, *client, marshaler),
+			subscriberData.NewSubscriptionService(tableName, *client, marshaler),
 			&services.NotificationSNSService{
 				Sns:      *snsClient,
 				TopicArn: topicArn,

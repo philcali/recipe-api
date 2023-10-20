@@ -10,7 +10,7 @@ import (
 	"philcali.me/recipes/internal/dynamodb/token"
 )
 
-func NewShoppingListDynamoDBService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.Repository[data.ShoppingListDTO, data.ShoppingListInputDTO] {
+func NewShoppingListService(tableName string, client dynamodb.Client, marshaler token.TokenMarshaler) data.Repository[data.ShoppingListDTO, data.ShoppingListInputDTO] {
 	return &services.RepositoryDynamoDBService[data.ShoppingListDTO, data.ShoppingListInputDTO]{
 		DynamoDB:       client,
 		TableName:      tableName,
