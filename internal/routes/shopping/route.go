@@ -32,7 +32,7 @@ func (sl *ShoppingListService) GetRoutes() map[string]routes.Route {
 }
 
 func (sl *ShoppingListService) ListShoppingLists(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return util.SerializeList[data.ShoppingListDTO, data.ShoppingListInputDTO](sl.data, NewShoppingList, event, ctx)
+	return util.SerializeList(sl.data, NewShoppingList, event, ctx)
 }
 
 func (sl *ShoppingListService) GetShoppingList(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {

@@ -16,12 +16,6 @@ func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.
 		TableName:      tableName,
 		TokenMarshaler: marshaler,
 		Name:           "Recipe",
-		GetPK: func(rd data.RecipeDTO) string {
-			return rd.PK
-		},
-		GetSK: func(rd data.RecipeDTO) string {
-			return rd.SK
-		},
 		Shim: func(pk, sk string) data.RecipeDTO {
 			return data.RecipeDTO{PK: pk, SK: sk}
 		},

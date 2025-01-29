@@ -16,12 +16,6 @@ func NewShoppingListService(tableName string, client dynamodb.Client, marshaler 
 		TableName:      tableName,
 		TokenMarshaler: marshaler,
 		Name:           "ShoppingList",
-		GetPK: func(sld data.ShoppingListDTO) string {
-			return sld.PK
-		},
-		GetSK: func(sld data.ShoppingListDTO) string {
-			return sld.SK
-		},
 		OnCreate: func(slid data.ShoppingListInputDTO, createTime time.Time, pk string, sk string) data.ShoppingListDTO {
 			return data.ShoppingListDTO{
 				PK:         pk,

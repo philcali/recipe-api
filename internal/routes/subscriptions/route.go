@@ -34,7 +34,7 @@ func (s *SubscriptionService) GetRoutes() map[string]routes.Route {
 }
 
 func (s *SubscriptionService) ListSubscriptions(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return util.SerializeList[data.SubscriptionDTO, data.SubscriptionInputDTO](s.data, NewSubscription, event, ctx)
+	return util.SerializeList(s.data, NewSubscription, event, ctx)
 }
 
 func (s *SubscriptionService) GetSubscription(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {

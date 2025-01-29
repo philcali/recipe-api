@@ -38,12 +38,38 @@ func CreateTable(client *dynamodb.Client) (string, error) {
 			AttributeName: aws.String("SK"),
 			AttributeType: types.ScalarAttributeTypeS,
 		},
+		{
+			AttributeName: aws.String("GS1-PK"),
+			AttributeType: types.ScalarAttributeTypeS,
+		},
+		{
+			AttributeName: aws.String("createTime"),
+			AttributeType: types.ScalarAttributeTypeS,
+		},
 	}
 	output, err := client.CreateTable(context.TODO(), &dynamodb.CreateTableInput{
 		TableName:            aws.String("RecipeData"),
 		KeySchema:            keySchema,
 		BillingMode:          types.BillingModePayPerRequest,
 		AttributeDefinitions: atrributes,
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+			{
+				IndexName: aws.String("GS1"),
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("GS1-PK"),
+						KeyType:       types.KeyTypeHash,
+					},
+					{
+						AttributeName: aws.String("createTime"),
+						KeyType:       types.KeyTypeRange,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll,
+				},
+			},
+		},
 	})
 	if err != nil {
 		return "", err

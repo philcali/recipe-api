@@ -14,12 +14,14 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/exp/maps"
 	"philcali.me/recipes/internal/data"
+	tokenData "philcali.me/recipes/internal/dynamodb/apitokens"
 	recipeData "philcali.me/recipes/internal/dynamodb/recipes"
 	shoppingData "philcali.me/recipes/internal/dynamodb/shopping"
 	subscriberData "philcali.me/recipes/internal/dynamodb/subscriptions"
 	"philcali.me/recipes/internal/dynamodb/token"
 	"philcali.me/recipes/internal/notifications"
 	"philcali.me/recipes/internal/routes"
+	"philcali.me/recipes/internal/routes/apitokens"
 	"philcali.me/recipes/internal/routes/recipes"
 	"philcali.me/recipes/internal/routes/shopping"
 	"philcali.me/recipes/internal/routes/subscriptions"
@@ -41,6 +43,7 @@ func NewLocalServer(t *testing.T) *LocalServer {
 	router := routes.NewRouter(
 		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
 		shopping.NewRoute(shoppingData.NewShoppingListService(tableName, *client, marshaler)),
+		apitokens.NewRouteWithIndex(tokenData.NewApiTokenService(tableName, *client, marshaler), "GS1"),
 		subscriptions.NewRoute(
 			subscriberData.NewSubscriptionService(tableName, *client, marshaler),
 			&LocalNotifications{
@@ -147,14 +150,14 @@ func TestRouter(t *testing.T) {
 				},
 			},
 		})
-		if 200 != created.StatusCode {
+		if created.StatusCode != 200 {
 			t.Fatalf("Response on create %d: %s", created.StatusCode, created.Body)
 		}
 		if *createdRecipe.NumberOfServings != 2 {
 			t.Fatalf("Failed to set number of servings, expected 2, got %s", created.Body)
 		}
 		get := server.Get(t, nil, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
-		if 200 != get.StatusCode {
+		if get.StatusCode != 200 {
 			t.Fatalf("Response failed with status %d: %s", get.StatusCode, get.Body)
 		}
 		if created.Body != get.Body {
@@ -183,7 +186,7 @@ func TestRouter(t *testing.T) {
 				},
 			},
 		})
-		if 200 != updated.StatusCode {
+		if updated.StatusCode != 200 {
 			t.Fatalf("Update response %d: %s", updated.StatusCode, updated.Body)
 		}
 		var getUpdateRecipe recipes.Recipe
@@ -204,7 +207,7 @@ func TestRouter(t *testing.T) {
 			t.Fatalf("Failed to update type %s, %s", getUpdateRecipe.Name, getUpdate.Body)
 		}
 		deleted := server.Delete(t, fmt.Sprintf("/recipes/%s", createdRecipe.Id))
-		if 204 != deleted.StatusCode {
+		if deleted.StatusCode != 204 {
 			t.Fatalf("Response on delete %d: %s", deleted.StatusCode, deleted.Body)
 		}
 	})
@@ -228,11 +231,11 @@ func TestRouter(t *testing.T) {
 				},
 			},
 		})
-		if 200 != created.StatusCode {
+		if created.StatusCode != 200 {
 			t.Fatalf("Failed to create shopping list, expected 200 got %d: %s", created.StatusCode, created.Body)
 		}
 		get := server.Get(t, nil, fmt.Sprintf("/lists/%s", createdList.Id))
-		if 200 != get.StatusCode {
+		if get.StatusCode != 200 {
 			t.Fatalf("Failed to get new list %s, expected 200 got %d: %s", createdList.Id, get.StatusCode, get.Body)
 		}
 		if get.Body != created.Body {
@@ -269,7 +272,7 @@ func TestRouter(t *testing.T) {
 				},
 			},
 		})
-		if 200 != update.StatusCode {
+		if update.StatusCode != 200 {
 			t.Fatalf("Failed to update, expected 200, got %d: %s", update.StatusCode, update.Body)
 		}
 		if updatedList.ExpiresIn == nil || updatedList.ExpiresIn.Before(time.Now().Add(time.Minute+55)) {
@@ -279,12 +282,46 @@ func TestRouter(t *testing.T) {
 			t.Fatalf("Failed to update the shopping list %v: %s", updatedList.Items, update.Body)
 		}
 		delete := server.Delete(t, fmt.Sprintf("/lists/%s", createdList.Id))
-		if 204 != delete.StatusCode {
+		if delete.StatusCode != 204 {
 			t.Fatalf("Failed to delete, expected 204, got %d: %s", delete.StatusCode, delete.Body)
 		}
 		getRemoved := server.Get(t, nil, fmt.Sprintf("/lists/%s", createdList.Id))
-		if 404 != getRemoved.StatusCode {
+		if getRemoved.StatusCode != 404 {
 			t.Fatalf("Failed to actually delete, expected 404, got %d: %s", getRemoved.StatusCode, getRemoved.Body)
+		}
+	})
+
+	t.Run("ApiToken", func(t *testing.T) {
+		var createdToken apitokens.ApiToken
+		created := server.Post(t, &createdToken, "/tokens", &apitokens.ApiTokenInput{
+			Name: aws.String("Test Token"),
+			Scopes: []data.Scope{
+				data.LIST_READ,
+				data.RECIPE_READ,
+			},
+		})
+		if created.StatusCode != 200 {
+			t.Fatalf("Expected 200 on create, but received: %d", created.StatusCode)
+		}
+		get := server.Get(t, nil, fmt.Sprintf("/tokens/%s", createdToken.Value))
+		if get.StatusCode != 200 {
+			t.Fatalf("Expected 200 on get, but received: %d", get.StatusCode)
+		}
+		var results data.QueryResults[apitokens.ApiToken]
+		listTokens := server.Get(t, &results, "/tokens")
+		if listTokens.StatusCode != 200 {
+			t.Fatalf("Expected 200 on list, but received: %d, %v", listTokens.StatusCode, listTokens.Body)
+		}
+		if len(results.Items) != 1 {
+			t.Fatalf("Expected list of tokens to be 1, received: %d", len(results.Items))
+		}
+		apiToken := results.Items[0]
+		if apiToken.Value != createdToken.Value {
+			t.Fatalf("Expected list item is not expected: %v", apiToken)
+		}
+		del := server.Delete(t, fmt.Sprintf("/tokens/%s", apiToken.Value))
+		if del.StatusCode != 204 {
+			t.Fatalf("Expected 204 on delete, received: %d", del.StatusCode)
 		}
 	})
 
@@ -295,7 +332,7 @@ func TestRouter(t *testing.T) {
 			Protocol: aws.String("email"),
 		})
 
-		if 200 != created.StatusCode {
+		if created.StatusCode != 200 {
 			t.Fatalf("Failed to create a subscription: %s", created.Body)
 		}
 
@@ -305,7 +342,7 @@ func TestRouter(t *testing.T) {
 
 		var listSubscribers data.QueryResults[subscriptions.Subscription]
 		listResp := server.Get(t, listSubscribers, "/subscriptions")
-		if 200 != listResp.StatusCode {
+		if listResp.StatusCode != 200 {
 			t.Fatalf("Failed to list subscriptions: %v", listResp.Body)
 		}
 
@@ -316,7 +353,7 @@ func TestRouter(t *testing.T) {
 		var getSubscriber subscriptions.Subscription
 		getResp := server.Get(t, &getSubscriber, "/subscriptions/"+createdSubscriber.Id)
 
-		if 200 != getResp.StatusCode {
+		if getResp.StatusCode != 200 {
 			t.Fatalf("Failed to get subscriber: %s", getResp.Body)
 		}
 
@@ -326,7 +363,7 @@ func TestRouter(t *testing.T) {
 
 		deleteResp := server.Delete(t, "/subscriptions/"+createdSubscriber.Id)
 
-		if 204 != deleteResp.StatusCode {
+		if deleteResp.StatusCode != 204 {
 			t.Fatalf("Failed to delete the subscriber: %s, %v", createdSubscriber.Id, deleteResp.Body)
 		}
 	})
@@ -335,14 +372,14 @@ func TestRouter(t *testing.T) {
 		updated := server.Post(t, nil, "/recipe/not-existent", &recipes.RecipeInput{
 			Name: aws.String("Non-Existence"),
 		})
-		if 404 != updated.StatusCode {
+		if updated.StatusCode != 404 {
 			t.Fatalf("Expected status code of 404, but got %d: %s", updated.StatusCode, updated.Body)
 		}
 	})
 
 	t.Run("CorsPreflight", func(t *testing.T) {
 		preflight := server.Options(t, "/recipes")
-		if 200 != preflight.StatusCode {
+		if preflight.StatusCode != 200 {
 			t.Fatalf("Received a %d status code, expected 200", preflight.StatusCode)
 		}
 		if preflight.Body != "" {

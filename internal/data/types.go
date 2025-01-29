@@ -29,5 +29,6 @@ type Repository[T interface{}, I interface{}] interface {
 	CreateWithItemId(accountId string, input I, itemId string) (T, error)
 	Update(accountId string, itemId string, input I) (T, error)
 	List(accountId string, params QueryParams) (QueryResults[T], error)
+	ListByIndex(accountId string, indexName string, params QueryParams) (QueryResults[T], error)
 	Delete(accountId string, itemId string) error
 }
