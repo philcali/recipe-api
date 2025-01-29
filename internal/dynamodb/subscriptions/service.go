@@ -15,12 +15,6 @@ func NewSubscriptionService(tableName string, client dynamodb.Client, marshaler 
 		TableName:      tableName,
 		TokenMarshaler: marshaler,
 		Name:           "Subscription",
-		GetPK: func(sd data.SubscriptionDTO) string {
-			return sd.PK
-		},
-		GetSK: func(sd data.SubscriptionDTO) string {
-			return sd.SK
-		},
 		Shim: func(pk, sk string) data.SubscriptionDTO {
 			return data.SubscriptionDTO{PK: pk, SK: sk}
 		},
@@ -29,6 +23,7 @@ func NewSubscriptionService(tableName string, client dynamodb.Client, marshaler 
 				PK:            pk,
 				SK:            sk,
 				CreateTime:    createTime,
+				UpdateTime:    createTime,
 				Endpoint:      *sid.Endpoint,
 				Protocol:      *sid.Protocol,
 				SubscriberArn: *sid.SubscriberArn,

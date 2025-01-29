@@ -19,13 +19,6 @@ type SubscriptionInput struct {
 	Protocol *string `json:"protocol"`
 }
 
-func (s *SubscriptionInput) toData() data.SubscriptionInputDTO {
-	return data.SubscriptionInputDTO{
-		Endpoint: s.Endpoint,
-		Protocol: s.Protocol,
-	}
-}
-
 func NewSubscription(entry data.SubscriptionDTO) Subscription {
 	return Subscription{
 		Endpoint:   entry.Endpoint,

@@ -26,6 +26,10 @@ func AuthorizedRoute(route routes.Route) routes.Route {
 	return func(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
 		if username, ok := event.RequestContext.Authorizer.JWT.Claims["username"]; ok {
 			return route(event, context.WithValue(ctx, "Username", username))
+		} else if claims, ok := event.RequestContext.Authorizer.Lambda["claims"]; ok {
+			if collection, ok := claims.(map[string]string); ok {
+				return route(event, context.WithValue(ctx, "UserName", collection["username"]))
+			}
 		}
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InternalServer("Unexpected internal error")
 	}
@@ -62,10 +66,11 @@ func SerializeResponseOK[T interface{}, R interface{}](delayed func(T) R, thing 
 	return SerializeResponse(delayed, thing, err, 200)
 }
 
-func SerializeList[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, indexName *string, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
 	var limit int
 	var nextToken []byte
 	var err error
+	var items data.QueryResults[T]
 	if sLimit, ok := event.QueryStringParameters["limit"]; ok {
 		if limit, err = strconv.Atoi(sLimit); err != nil {
 			return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput("Limit parameter was not a number type.")
@@ -74,11 +79,28 @@ func SerializeList[T interface{}, I interface{}, R interface{}](repo data.Reposi
 	if token, ok := event.QueryStringParameters["nextToken"]; ok {
 		nextToken = []byte(token)
 	}
-	items, err := repo.List(Username(ctx), data.QueryParams{
-		Limit:     limit,
-		NextToken: nextToken,
-	})
+
+	if indexName == nil {
+		items, err = repo.List(Username(ctx), data.QueryParams{
+			Limit:     limit,
+			NextToken: nextToken,
+		})
+	} else {
+		items, err = repo.ListByIndex(Username(ctx), *indexName, data.QueryParams{
+			Limit:     limit,
+			NextToken: nextToken,
+		})
+	}
+
 	return SerializeResponseOK(ConvertQueryResultsPartial(thunk), items, err)
+}
+
+func SerializeList[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+	return _serializeList(repo, thunk, nil, event, ctx)
+}
+
+func SerializeListByIndex[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, indexName string, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+	return _serializeList(repo, thunk, &indexName, event, ctx)
 }
 
 func SerializeResponseNoContent(err error) (events.APIGatewayV2HTTPResponse, error) {

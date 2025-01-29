@@ -21,12 +21,6 @@ func NewUserService(tableName string, client dynamodb.Client, marshaler token.To
 		Shim: func(pk, sk string) data.UserDTO {
 			return data.UserDTO{PK: pk, SK: sk}
 		},
-		GetPK: func(ud data.UserDTO) string {
-			return ud.PK
-		},
-		GetSK: func(ud data.UserDTO) string {
-			return ud.SK
-		},
 		OnCreate: func(uid data.UserInputDTO, createTime time.Time, pk, sk string) data.UserDTO {
 			return data.UserDTO{
 				PK:         pk,

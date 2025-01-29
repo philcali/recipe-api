@@ -6,3 +6,4 @@ build_function.zip
 dynamodb/DynamoDBLocal*
 dynamodb/*.txt
 dynamodb/*.tar.gz
+dynamodb-local-*

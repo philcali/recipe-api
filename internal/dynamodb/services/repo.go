@@ -23,8 +23,6 @@ type RepositoryDynamoDBService[T interface{}, I interface{}] struct {
 	TokenMarshaler token.TokenMarshaler
 	Name           string
 	Shim           func(pk string, sk string) T
-	GetPK          func(T) string
-	GetSK          func(T) string
 	OnCreate       func(I, time.Time, string, string) T
 	OnUpdate       func(I, expression.UpdateBuilder)
 }
@@ -45,8 +43,11 @@ func _getKey(pks string, sks string) (map[string]types.AttributeValue, error) {
 	return map[string]types.AttributeValue{"PK": pk, "SK": sk}, nil
 }
 
-func (rs *RepositoryDynamoDBService[T, I]) List(accountId string, params data.QueryParams) (data.QueryResults[T], error) {
+func _listView[T interface{}, I interface{}](rs *RepositoryDynamoDBService[T, I], accountId string, params data.QueryParams, indexName *string) (data.QueryResults[T], error) {
 	keyEx := expression.Key("PK").Equal(expression.Value(_getPrimaryKey(accountId, rs.Name)))
+	if indexName != nil {
+		keyEx = expression.Key(fmt.Sprintf("%s-PK", *indexName)).Equal(expression.Value(_getPrimaryKey(accountId, rs.Name)))
+	}
 	expr, err := expression.NewBuilder().WithKeyCondition(keyEx).Build()
 	if err != nil {
 		return data.QueryResults[T]{}, err
@@ -59,6 +60,7 @@ func (rs *RepositoryDynamoDBService[T, I]) List(accountId string, params data.Qu
 	}
 	output, err := rs.DynamoDB.Query(context.TODO(), &dynamodb.QueryInput{
 		TableName:                 aws.String(rs.TableName),
+		IndexName:                 indexName,
 		Limit:                     params.GetLimit(),
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
@@ -80,6 +82,14 @@ func (rs *RepositoryDynamoDBService[T, I]) List(accountId string, params data.Qu
 		Items:     items,
 		NextToken: token,
 	}, nil
+}
+
+func (rs *RepositoryDynamoDBService[T, I]) ListByIndex(accountId string, indexName string, params data.QueryParams) (data.QueryResults[T], error) {
+	return _listView(rs, accountId, params, &indexName)
+}
+
+func (rs *RepositoryDynamoDBService[T, I]) List(accountId string, params data.QueryParams) (data.QueryResults[T], error) {
+	return _listView(rs, accountId, params, nil)
 }
 
 func (rs *RepositoryDynamoDBService[T, I]) Create(accountId string, input I) (T, error) {
@@ -106,7 +116,7 @@ func (rs *RepositoryDynamoDBService[T, I]) CreateWithItemId(accountId string, in
 	})
 	if err != nil {
 		if _, ok := err.(*types.ConditionalCheckFailedException); ok {
-			return shim, exceptions.Conflict(strings.ToLower(rs.Name), rs.GetSK(shim))
+			return shim, exceptions.Conflict(strings.ToLower(rs.Name), itemId)
 		}
 		return shim, err
 	}
