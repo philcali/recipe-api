@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"philcali.me/recipes/internal/data"
 	"philcali.me/recipes/internal/dynamodb/apitokens"
 	"philcali.me/recipes/internal/dynamodb/token"
 )
@@ -40,11 +41,16 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	if err := json.Unmarshal(body, &claims); err != nil {
 		return nil, fmt.Errorf("failed to parse claims: %v", err)
 	}
+	// We assume that a JWT auth is local user admin
 	return &events.APIGatewayV2CustomAuthorizerSimpleResponse{
 		IsAuthorized: true,
 		Context: map[string]interface{}{
-			"jwt": map[string]interface{}{
-				"claims": claims,
+			"claims": claims,
+			"scopes": []string{
+				string(data.RECIPE_WRITE),
+				string(data.LIST_WRITE),
+				string(data.SUBSCRIPTIONS_WRITE),
+				string(data.TOKENS_WRITE),
 			},
 		},
 	}, nil
@@ -70,11 +76,10 @@ func ApiTokenAuth(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	return &events.APIGatewayV2CustomAuthorizerSimpleResponse{
 		IsAuthorized: true,
 		Context: map[string]interface{}{
-			"jwt": map[string]interface{}{
-				"claims": map[string]interface{}{
-					"username": tokenDTO.AccountId,
-				},
+			"claims": map[string]string{
+				"username": tokenDTO.AccountId,
 			},
+			"scopes": tokenDTO.Scopes,
 		},
 	}, nil
 }

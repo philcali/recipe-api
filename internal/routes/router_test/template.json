@@ -13,13 +13,15 @@
     "accountId": "012345678912",
     "apiId": "api-id",
     "authorizer": {
-      "jwt": {
+      "lambda": {
         "claims": {
           "username": "nobody"
         },
         "scopes": [
-          "scope1",
-          "scope2"
+          "recipes",
+          "lists",
+          "subscriptions",
+          "tokens"
         ]
       }
     },

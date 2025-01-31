@@ -2,6 +2,7 @@ package filters
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -45,6 +46,55 @@ func (cf *CorsFilter) Filter(ctx *FilterContext) (*FilterContext, bool) {
 	return ctx, false
 }
 
+type AuthorizedScopeFilter struct {
+	ScopeField string
+}
+
+func (cf *AuthorizedScopeFilter) IdentityScopes(ctx *FilterContext) ([]string, bool) {
+	if collection, ok := ctx.Request.RequestContext.Authorizer.Lambda[cf.ScopeField]; ok {
+		if scopes, ok := collection.([]interface{}); ok {
+			var rtn []string
+			for _, scope := range scopes {
+				rtn = append(rtn, fmt.Sprintf("%s", scope))
+			}
+			return rtn, ok
+		}
+	}
+	return nil, false
+}
+
+func (cf *AuthorizedScopeFilter) Filter(ctx *FilterContext) (*FilterContext, bool) {
+	if ctx.Request.RequestContext.HTTP.Method != "OPTIONS" {
+		jwt := ctx.Request.RequestContext.Authorizer.JWT
+		if jwt != nil && len(jwt.Claims) > 0 {
+			return ctx, false
+		}
+		if scopes, ok := cf.IdentityScopes(ctx); ok {
+			for _, scope := range scopes {
+				auth := strings.Split(scope, ".")
+				if strings.HasPrefix(ctx.Request.RawPath, "/"+auth[0]) {
+					if len(auth) == 1 || len(auth) < 1 && ctx.Request.RequestContext.HTTP.Method == "GET" {
+						return ctx, false
+					}
+				}
+			}
+		}
+	}
+	body := "{\"message\": \"Unauthorized\"}"
+	return &FilterContext{
+		Request: ctx.Request,
+		Context: ctx.Context,
+		Response: &events.APIGatewayV2HTTPResponse{
+			Headers: map[string]string{
+				"Content-Type":   "application/json",
+				"Content-Length": string(rune(len(body))),
+			},
+			StatusCode: 401,
+			Body:       body,
+		},
+	}, true
+}
+
 func DefaultFilterContext(event events.APIGatewayV2HTTPRequest, ctx context.Context) *FilterContext {
 	return &FilterContext{
 		Request: &event,
@@ -63,5 +113,11 @@ func DefaultCorsFilter() *CorsFilter {
 		Methods: methods[:],
 		Headers: headers[:],
 		Origins: origins[:],
+	}
+}
+
+func DefaultAuthorizationFilter() *AuthorizedScopeFilter {
+	return &AuthorizedScopeFilter{
+		ScopeField: "scopes",
 	}
 }

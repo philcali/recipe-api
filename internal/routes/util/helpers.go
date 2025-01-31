@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -24,12 +25,20 @@ func MapOnList[I interface{}, O interface{}](ls *[]I, thunk func(I) O) *[]O {
 
 func AuthorizedRoute(route routes.Route) routes.Route {
 	return func(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-		if username, ok := event.RequestContext.Authorizer.JWT.Claims["username"]; ok {
-			return route(event, context.WithValue(ctx, "Username", username))
-		} else if claims, ok := event.RequestContext.Authorizer.Lambda["claims"]; ok {
-			if collection, ok := claims.(map[string]string); ok {
-				return route(event, context.WithValue(ctx, "UserName", collection["username"]))
+		var username string
+		jwt := event.RequestContext.Authorizer.JWT
+		lambda := event.RequestContext.Authorizer.Lambda
+		if jwt != nil {
+			username = jwt.Claims["username"]
+		} else if lambda != nil {
+			if c, ok := lambda["claims"]; ok {
+				if v, ok := c.(map[string]interface{}); ok {
+					username = fmt.Sprintf("%s", v["username"])
+				}
 			}
+		}
+		if username != "" {
+			return route(event, context.WithValue(ctx, "Username", username))
 		}
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InternalServer("Unexpected internal error")
 	}
