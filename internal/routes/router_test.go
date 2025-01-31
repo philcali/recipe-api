@@ -369,7 +369,7 @@ func TestRouter(t *testing.T) {
 	})
 
 	t.Run("UpdateFailure", func(t *testing.T) {
-		updated := server.Post(t, nil, "/recipe/not-existent", &recipes.RecipeInput{
+		updated := server.Post(t, nil, "/recipes/not-existent", &recipes.RecipeInput{
 			Name: aws.String("Non-Existence"),
 		})
 		if updated.StatusCode != 404 {

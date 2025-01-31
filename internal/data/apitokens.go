@@ -5,10 +5,14 @@ import "time"
 type Scope string
 
 const (
-	RECIPE_READ  Scope = "recipes:read"
-	RECIPE_WRITE Scope = "recipes:write"
-	LIST_READ    Scope = "lists:read"
-	LIST_WRITE   Scope = "lists:write"
+	RECIPE_READ         Scope = "recipes.readonly"
+	RECIPE_WRITE        Scope = "recipes"
+	LIST_READ           Scope = "lists.readonly"
+	LIST_WRITE          Scope = "lists"
+	SUBSCRIPTIONS_READ  Scope = "subscriptions.readonly"
+	SUBSCRIPTIONS_WRITE Scope = "subscriptions"
+	TOKENS_READ         Scope = "tokens.readonly"
+	TOKENS_WRITE        Scope = "tokens"
 )
 
 type ApiTokenDTO struct {

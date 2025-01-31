@@ -85,6 +85,7 @@ func NewRouter(services ...Service) *Router {
 		}
 	}
 	fltrs = append(fltrs, filters.DefaultCorsFilter())
+	fltrs = append(fltrs, filters.DefaultAuthorizationFilter())
 	return &Router{
 		Routes:  routes,
 		Filters: fltrs,
