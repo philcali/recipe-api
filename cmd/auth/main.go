@@ -31,7 +31,7 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 		return nil, fmt.Errorf("failed to invoke request: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("invalid token: %s", apiToken)
+		return nil, fmt.Errorf("invalid token: %s, %v", apiToken, resp.Status)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -100,7 +100,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayV2CustomAuthorize
 				return *newResp, err
 			}
 			if err != nil {
-				fmt.Printf("Skipping auth due to %v", err)
+				fmt.Printf("Skipping auth due to %v\n", err)
 			}
 		}
 	}
