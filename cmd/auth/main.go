@@ -27,7 +27,6 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	}
 	req.Header.Add("Authorization", apiToken)
 	client := &http.Client{}
-	fmt.Printf("Using %s as request\n", req.URL.String())
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to invoke request: %v", err)
@@ -44,6 +43,7 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	if err := json.Unmarshal(body, &claims); err != nil {
 		return nil, fmt.Errorf("failed to parse claims: %v", err)
 	}
+	fmt.Printf("Found claims %v\n", claims)
 	// We assume that a JWT auth is local user admin
 	return &events.APIGatewayV2CustomAuthorizerSimpleResponse{
 		IsAuthorized: true,
