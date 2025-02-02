@@ -27,6 +27,7 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	}
 	req.Header.Add("Authorization", apiToken)
 	client := &http.Client{}
+	fmt.Printf("Using %s as request\n", req.URL.String())
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to invoke request: %v", err)
