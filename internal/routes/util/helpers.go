@@ -23,24 +23,31 @@ func MapOnList[I interface{}, O interface{}](ls *[]I, thunk func(I) O) *[]O {
 	return &result
 }
 
-func AuthorizedRoute(route routes.Route) routes.Route {
-	return func(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-		var username string
-		jwt := event.RequestContext.Authorizer.JWT
-		lambda := event.RequestContext.Authorizer.Lambda
-		if jwt != nil {
-			username = jwt.Claims["username"]
-		} else if lambda != nil {
-			if c, ok := lambda["claims"]; ok {
-				if v, ok := c.(map[string]interface{}); ok {
-					username = fmt.Sprintf("%s", v["username"])
+func AuthorizationClaims(event events.APIGatewayV2HTTPRequest) map[string]string {
+	jwt := event.RequestContext.Authorizer.JWT
+	lambda := event.RequestContext.Authorizer.Lambda
+	if jwt != nil {
+		return jwt.Claims
+	} else if lambda != nil {
+		if c, ok := lambda["jwt"]; ok {
+			if v, ok := c.(map[string]interface{}); ok {
+				claims := make(map[string]string, len(v))
+				for k, o := range v {
+					claims[k] = fmt.Sprintf("%v", o)
 				}
+				return claims
 			}
 		}
-		if username != "" {
+	}
+	return nil
+}
+
+func AuthorizedRoute(route routes.Route) routes.Route {
+	return func(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+		claims := AuthorizationClaims(event)
+		if username, ok := claims["username"]; ok {
 			return route(event, context.WithValue(ctx, "Username", username))
 		}
-		fmt.Printf("JWT: %v, Lambda: %v", jwt, lambda)
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InternalServer("Unexpected internal error")
 	}
 }

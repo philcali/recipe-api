@@ -14,8 +14,9 @@
     "apiId": "api-id",
     "authorizer": {
       "lambda": {
-        "claims": {
-          "username": "nobody"
+        "jwt": {
+          "username": "nobody",
+          "email": "nobody@email.com"
         },
         "scopes": [
           "recipes",

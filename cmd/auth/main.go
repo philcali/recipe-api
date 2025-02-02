@@ -78,9 +78,7 @@ func ApiTokenAuth(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	return &events.APIGatewayV2CustomAuthorizerSimpleResponse{
 		IsAuthorized: true,
 		Context: map[string]interface{}{
-			"jwt": map[string]string{
-				"username": tokenDTO.AccountId,
-			},
+			"jwt":    tokenDTO.Claims,
 			"scopes": tokenDTO.Scopes,
 		},
 	}, nil

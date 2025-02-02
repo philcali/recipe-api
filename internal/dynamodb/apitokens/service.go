@@ -28,6 +28,7 @@ func NewApiTokenService(tableName string, client dynamodb.Client, marshaler toke
 				Name:       *atid.Name,
 				ExpiresIn:  atid.ExpiresIn,
 				Scopes:     *atid.Scopes,
+				Claims:     *atid.Claims,
 				AccountId:  *atid.AccountId,
 				CreateTime: t,
 				UpdateTime: t,

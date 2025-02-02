@@ -85,9 +85,11 @@ func (as *ApiTokenService) CreateToken(event events.APIGatewayV2HTTPRequest, ctx
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InternalServer(err.Error())
 	}
+	claims := util.AuthorizationClaims(event)
 	created, err := as.data.CreateWithItemId("Global", data.ApiTokenInputDTO{
 		Name:      input.Name,
 		Scopes:    &input.Scopes,
+		Claims:    &claims,
 		AccountId: aws.String(util.Username(ctx)),
 		ExpiresIn: expiresIn,
 	}, tokenHash)
