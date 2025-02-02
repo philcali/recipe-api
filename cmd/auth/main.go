@@ -39,7 +39,7 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %v", err)
 	}
-	var claims map[string]json.RawMessage
+	var claims map[string]string
 	if err := json.Unmarshal(body, &claims); err != nil {
 		return nil, fmt.Errorf("failed to parse claims: %v", err)
 	}
