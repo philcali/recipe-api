@@ -40,6 +40,7 @@ func AuthorizedRoute(route routes.Route) routes.Route {
 		if username != "" {
 			return route(event, context.WithValue(ctx, "Username", username))
 		}
+		fmt.Printf("JWT: %v, Lambda: %v", jwt, lambda)
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InternalServer("Unexpected internal error")
 	}
 }
