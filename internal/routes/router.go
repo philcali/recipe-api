@@ -2,6 +2,7 @@ package routes
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -99,6 +100,9 @@ func translateError(err error) events.APIGatewayV2HTTPResponse {
 	}
 	if se, ok := err.(*exceptions.ServiceError); ok {
 		statusCode = se.StatusCode
+	}
+	if statusCode == 500 {
+		fmt.Printf("Internal error: %v", err)
 	}
 	body := "{\"message\": \"" + err.Error() + "\"}"
 	headers := map[string]string{
