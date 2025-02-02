@@ -99,6 +99,9 @@ func HandleRequest(ctx context.Context, event events.APIGatewayV2CustomAuthorize
 			if newResp != nil {
 				return *newResp, err
 			}
+			if err != nil {
+				fmt.Printf("Skipping auth due to %v", err)
+			}
 		}
 	}
 	return response, nil
