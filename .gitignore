@@ -1,7 +1,7 @@
 app
 main
 bootstrap
-build_function.zip
+build_*_function.zip
 # For testing
 dynamodb/DynamoDBLocal*
 dynamodb/*.txt
