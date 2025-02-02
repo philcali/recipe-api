@@ -43,7 +43,6 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	if err := json.Unmarshal(body, &claims); err != nil {
 		return nil, fmt.Errorf("failed to parse claims: %v", err)
 	}
-	fmt.Printf("Found claims %v\n", claims)
 	// We assume that a JWT auth is local user admin
 	return &events.APIGatewayV2CustomAuthorizerSimpleResponse{
 		IsAuthorized: true,
@@ -100,6 +99,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayV2CustomAuthorize
 		for _, authThunk := range thunks {
 			newResp, err := authThunk(ctx, apiToken)
 			if newResp != nil {
+				fmt.Printf("Using the context as %v\n", newResp.Context)
 				return *newResp, err
 			}
 			if err != nil {
