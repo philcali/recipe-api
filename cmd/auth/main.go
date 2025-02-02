@@ -31,7 +31,7 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 		return nil, fmt.Errorf("failed to invoke request: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("invalid token: %s, %v", apiToken, resp.Status)
+		return nil, fmt.Errorf("invalid %s with token: %s", req.URL, apiToken)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
