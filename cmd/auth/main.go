@@ -26,12 +26,14 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 	req.Header.Add("Authorization", apiToken)
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to invoke request: %v", err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("invalid %s with token: %s", req.URL, apiToken)
+		return nil, fmt.Errorf("invalid %s with token: %s", req.URL.String(), apiToken)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
