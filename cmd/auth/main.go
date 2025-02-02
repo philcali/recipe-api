@@ -47,7 +47,7 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	return &events.APIGatewayV2CustomAuthorizerSimpleResponse{
 		IsAuthorized: true,
 		Context: map[string]interface{}{
-			"claims": claims,
+			"jwt": claims,
 			"scopes": []string{
 				string(data.RECIPE_WRITE),
 				string(data.LIST_WRITE),
@@ -78,7 +78,7 @@ func ApiTokenAuth(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 	return &events.APIGatewayV2CustomAuthorizerSimpleResponse{
 		IsAuthorized: true,
 		Context: map[string]interface{}{
-			"claims": map[string]string{
+			"jwt": map[string]string{
 				"username": tokenDTO.AccountId,
 			},
 			"scopes": tokenDTO.Scopes,
