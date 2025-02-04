@@ -73,7 +73,7 @@ func (cf *AuthorizedScopeFilter) Filter(ctx *FilterContext) (*FilterContext, boo
 			for _, scope := range scopes {
 				auth := strings.Split(scope, ".")
 				if strings.HasPrefix(ctx.Request.RawPath, "/"+auth[0]) {
-					if len(auth) == 1 || len(auth) < 1 && ctx.Request.RequestContext.HTTP.Method == "GET" {
+					if len(auth) == 1 || len(auth) > 1 && ctx.Request.RequestContext.HTTP.Method == "GET" {
 						return ctx, false
 					}
 				}
