@@ -32,7 +32,7 @@ func (rs *RecipeService) GetRoutes() map[string]routes.Route {
 }
 
 func (rs *RecipeService) ListRecipes(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return util.SerializeList[data.RecipeDTO, data.RecipeInputDTO](rs.data, NewRecipe, event, ctx)
+	return util.SerializeList(rs.data, NewRecipe, event, ctx)
 }
 
 func (rs *RecipeService) GetRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
