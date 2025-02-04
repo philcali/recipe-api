@@ -99,7 +99,6 @@ func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repos
 		nextToken = []byte(token)
 	}
 
-	fmt.Printf("Limit of %d", limit)
 	if indexName == nil {
 		items, err = repo.List(Username(ctx), data.QueryParams{
 			Limit:     limit,

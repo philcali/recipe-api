@@ -6,7 +6,7 @@ type QueryParams struct {
 }
 
 func (q *QueryParams) GetLimit() *int32 {
-	limit := int32(100)
+	limit := int32(q.Limit)
 	if q.Limit <= 0 {
 		limit = 100
 	}
