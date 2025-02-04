@@ -89,9 +89,11 @@ func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repos
 	var err error
 	var items data.QueryResults[T]
 	if sLimit, ok := event.QueryStringParameters["limit"]; ok {
-		if limit, err = strconv.Atoi(sLimit); err != nil {
+		l, err := strconv.Atoi(sLimit)
+		if err != nil {
 			return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput("Limit parameter was not a number type.")
 		}
+		limit = l
 	}
 	if token, ok := event.QueryStringParameters["nextToken"]; ok {
 		nextToken = []byte(token)

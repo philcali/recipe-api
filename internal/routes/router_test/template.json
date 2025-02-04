@@ -8,6 +8,7 @@
   "headers": {
   },
   "queryStringParameters": {
+    "limit": "1"
   },
   "requestContext": {
     "accountId": "012345678912",

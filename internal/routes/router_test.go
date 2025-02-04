@@ -350,6 +350,10 @@ func TestRouter(t *testing.T) {
 			t.Fatalf("Failed to list the appropriate amount: %v", listSubscribers.Items)
 		}
 
+		if listSubscribers.NextToken != nil {
+			t.Fatal("Expected nextToken to be set but was nil")
+		}
+
 		var getSubscriber subscriptions.Subscription
 		getResp := server.Get(t, &getSubscriber, "/subscriptions/"+createdSubscriber.Id)
 
