@@ -1,8 +1,10 @@
 package recipes
 
 import (
+	"strings"
 	"time"
 
+	"github.com/aws/aws-lambda-go/events"
 	"philcali.me/recipes/internal/data"
 	"philcali.me/recipes/internal/routes/util"
 )
@@ -79,7 +81,26 @@ type Recipe struct {
 	UpdateTime         time.Time    `json:"updateTime"`
 }
 
-func NewRecipe(recipe data.RecipeDTO) Recipe {
+func StripFields(event events.APIGatewayV2HTTPRequest) func(data.RecipeDTO) Recipe {
+	var stripThumbnail bool
+	if stripFields, ok := event.QueryStringParameters["stripFields"]; ok {
+		fields := strings.Split(stripFields, ",")
+		for _, field := range fields {
+			if strings.EqualFold(field, "thumbnail") {
+				stripThumbnail = true
+			}
+		}
+	}
+	return func(rd data.RecipeDTO) Recipe {
+		return NewRecipe(rd, stripThumbnail)
+	}
+}
+
+func NewRecipe(recipe data.RecipeDTO, stripThumbail bool) Recipe {
+	var thumbnail *string
+	if !stripThumbail {
+		thumbnail = recipe.Thumbnail
+	}
 	return Recipe{
 		Id:                 recipe.SK,
 		Name:               recipe.Name,
@@ -88,7 +109,7 @@ func NewRecipe(recipe data.RecipeDTO) Recipe {
 		PrepareTimeMinutes: recipe.PrepareTimeMinutes,
 		Instructions:       recipe.Instructions,
 		NumberOfServings:   recipe.NumberOfServings,
-		Thumbnail:          recipe.Thumbnail,
+		Thumbnail:          thumbnail,
 		Type:               recipe.Type,
 		Ingredients:        *util.MapOnList(&recipe.Ingredients, ConvertIngredientDataToTransfer),
 		Nutrients: *util.MapOnList(&recipe.Nutrients, func(nd data.NutrientDTO) Nutrient {
