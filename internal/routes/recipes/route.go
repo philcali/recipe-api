@@ -32,12 +32,12 @@ func (rs *RecipeService) GetRoutes() map[string]routes.Route {
 }
 
 func (rs *RecipeService) ListRecipes(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return util.SerializeList(rs.data, NewRecipe, event, ctx)
+	return util.SerializeList(rs.data, StripFields(event), event, ctx)
 }
 
 func (rs *RecipeService) GetRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
 	item, err := rs.data.Get(util.Username(ctx), util.RequestParam(ctx, "recipeId"))
-	return util.SerializeResponseOK(NewRecipe, item, err)
+	return util.SerializeResponseOK(StripFields(event), item, err)
 }
 
 func (rs *RecipeService) CreateRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
@@ -46,7 +46,7 @@ func (rs *RecipeService) CreateRecipe(event events.APIGatewayV2HTTPRequest, ctx 
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
 	created, err := rs.data.Create(util.Username(ctx), input.ToData())
-	return util.SerializeResponseOK(NewRecipe, created, err)
+	return util.SerializeResponseOK(StripFields(event), created, err)
 }
 
 func (rs *RecipeService) UpdateRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
@@ -55,7 +55,7 @@ func (rs *RecipeService) UpdateRecipe(event events.APIGatewayV2HTTPRequest, ctx 
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
 	item, err := rs.data.Update(util.Username(ctx), util.RequestParam(ctx, "recipeId"), input.ToData())
-	return util.SerializeResponseOK(NewRecipe, item, err)
+	return util.SerializeResponseOK(StripFields(event), item, err)
 }
 
 func (rs *RecipeService) DeleteRecipe(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
