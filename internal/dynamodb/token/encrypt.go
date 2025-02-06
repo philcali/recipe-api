@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 
@@ -127,6 +128,7 @@ func (em *EncryptionTokenMarshaler) Marshal(accountId string, lastKey map[string
 	}
 	if b, err := json.Marshal(payload); err == nil {
 		s := _encodeNextToken(b)
+		fmt.Println("Paging token: " + s)
 		bytes = []byte(strings.TrimSpace(s))
 	}
 	return bytes, err
