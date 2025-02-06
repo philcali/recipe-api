@@ -26,10 +26,8 @@ func NewGCM() *EncryptionTokenMarshaler {
 	}
 }
 
-func _encodeNextToken(token []byte) []byte {
-	enc := make([]byte, base64.URLEncoding.EncodedLen(len(token)))
-	base64.URLEncoding.Encode(enc, token)
-	return enc
+func _encodeNextToken(token []byte) string {
+	return base64.URLEncoding.EncodeToString(token)
 }
 
 func _convertLastKeyToToken(lastKey map[string]types.AttributeValue) ([]byte, error) {
@@ -127,7 +125,7 @@ func (em *EncryptionTokenMarshaler) Marshal(accountId string, lastKey map[string
 		"nonce":      hex.EncodeToString(nonce),
 	}
 	if b, err := json.Marshal(payload); err == nil {
-		bytes = _encodeNextToken(b)
+		bytes = []byte(_encodeNextToken(b))
 	}
 	return bytes, err
 }
