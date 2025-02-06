@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -125,7 +126,9 @@ func (em *EncryptionTokenMarshaler) Marshal(accountId string, lastKey map[string
 		"nonce":      hex.EncodeToString(nonce),
 	}
 	if b, err := json.Marshal(payload); err == nil {
-		bytes = []byte(_encodeNextToken(b))
+		s := _encodeNextToken(b)
+		fmt.Println("Encoded string: " + s)
+		bytes = []byte(b)
 	}
 	return bytes, err
 }
