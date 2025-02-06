@@ -27,13 +27,13 @@ func NewGCM() *EncryptionTokenMarshaler {
 }
 
 func _encodeNextToken(token []byte) []byte {
-	enc := make([]byte, base64.StdEncoding.EncodedLen(len(token)))
-	base64.StdEncoding.Encode(enc, token)
+	enc := make([]byte, base64.URLEncoding.EncodedLen(len(token)))
+	base64.URLEncoding.Encode(enc, token)
 	return enc
 }
 
 func _convertLastKeyToToken(lastKey map[string]types.AttributeValue) ([]byte, error) {
-	if lastKey == nil || len(lastKey) == 0 {
+	if len(lastKey) == 0 {
 		return nil, nil
 	}
 	token := make(data.NextToken, len(lastKey))
@@ -54,8 +54,8 @@ func _convertLastKeyToToken(lastKey map[string]types.AttributeValue) ([]byte, er
 }
 
 func _decodeNextToken(encToken []byte) ([]byte, error) {
-	dec := make([]byte, base64.StdEncoding.DecodedLen(len(encToken)))
-	n, err := base64.StdEncoding.Decode(dec, encToken)
+	dec := make([]byte, base64.URLEncoding.DecodedLen(len(encToken)))
+	n, err := base64.URLEncoding.Decode(dec, encToken)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func _decodeNextToken(encToken []byte) ([]byte, error) {
 }
 
 func _convertTokenToLastKey(token []byte) (map[string]types.AttributeValue, error) {
-	if token == nil || len(token) == 0 {
+	if len(token) == 0 {
 		return nil, nil
 	}
 	var nextToken data.NextToken
@@ -133,7 +133,7 @@ func (em *EncryptionTokenMarshaler) Marshal(accountId string, lastKey map[string
 }
 
 func (em *EncryptionTokenMarshaler) Unmarshal(accountId string, token []byte) (map[string]types.AttributeValue, error) {
-	if token == nil || len(token) == 0 {
+	if len(token) == 0 {
 		return nil, nil
 	}
 	decToken, err := _decodeNextToken(token)

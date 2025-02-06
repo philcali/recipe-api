@@ -53,6 +53,9 @@ func TestEncryptionMarshaler(t *testing.T) {
 			t.Fatalf("Failed to marshal token: %s", lastKey)
 		}
 		otherKey, err := marshaler.Unmarshal("987654321012", token)
+		if err == nil {
+			t.Fatalf("Expected an err but received, %v", otherKey)
+		}
 		if otherKey != nil {
 			t.Fatalf("Should not have decrypted %s", otherKey)
 		}
