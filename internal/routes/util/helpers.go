@@ -85,7 +85,7 @@ func SerializeResponseOK[T interface{}, R interface{}](delayed func(T) R, thing 
 
 func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, indexName *string, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
 	var limit int
-	var nextToken []byte
+	var nextToken *string
 	var err error
 	var items data.QueryResults[T]
 	if sLimit, ok := event.QueryStringParameters["limit"]; ok {
@@ -96,7 +96,7 @@ func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repos
 		limit = l
 	}
 	if token, ok := event.QueryStringParameters["nextToken"]; ok {
-		nextToken = []byte(token)
+		nextToken = &token
 	}
 
 	if indexName == nil {

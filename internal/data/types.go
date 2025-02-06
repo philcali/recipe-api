@@ -1,8 +1,8 @@
 package data
 
 type QueryParams struct {
-	Limit     int    `json:"limit"`
-	NextToken []byte `json:"nextToken"`
+	Limit     int     `json:"limit"`
+	NextToken *string `json:"nextToken"`
 }
 
 func (q *QueryParams) GetLimit() *int32 {
@@ -17,8 +17,8 @@ func (q *QueryParams) GetLimit() *int32 {
 }
 
 type QueryResults[T interface{}] struct {
-	Items     []T    `json:"items"`
-	NextToken []byte `json:"nextToken"`
+	Items     []T     `json:"items"`
+	NextToken *string `json:"nextToken"`
 }
 
 type NextToken map[string]map[string]string

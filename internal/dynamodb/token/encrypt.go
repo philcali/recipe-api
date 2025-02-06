@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"strings"
 
@@ -53,9 +52,9 @@ func _convertLastKeyToToken(lastKey map[string]types.AttributeValue) ([]byte, er
 	return json.Marshal(token)
 }
 
-func _decodeNextToken(encToken []byte) ([]byte, error) {
+func _decodeNextToken(encToken string) ([]byte, error) {
 	dec := make([]byte, base64.URLEncoding.DecodedLen(len(encToken)))
-	n, err := base64.URLEncoding.Decode(dec, encToken)
+	n, err := base64.URLEncoding.Decode(dec, []byte(encToken))
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +105,12 @@ func _mode(marshaller *EncryptionTokenMarshaler, accountId string) (cipher.AEAD,
 	return marshaller.Mode(key)
 }
 
-func (em *EncryptionTokenMarshaler) Marshal(accountId string, lastKey map[string]types.AttributeValue) ([]byte, error) {
+func (em *EncryptionTokenMarshaler) Marshal(accountId string, lastKey map[string]types.AttributeValue) (*string, error) {
 	var err error
-	var bytes []byte
+	var token *string
 	serialized, err := _convertLastKeyToToken(lastKey)
 	if err != nil || serialized == nil {
-		return serialized, err
+		return nil, err
 	}
 	aesgcm, err := _mode(em, accountId)
 	if err != nil {
@@ -127,18 +126,17 @@ func (em *EncryptionTokenMarshaler) Marshal(accountId string, lastKey map[string
 		"nonce":      hex.EncodeToString(nonce),
 	}
 	if b, err := json.Marshal(payload); err == nil {
-		s := _encodeNextToken(b)
-		fmt.Println("Paging token: " + s)
-		bytes = []byte(strings.TrimSpace(s))
+		s := strings.TrimSpace(_encodeNextToken(b))
+		token = &s
 	}
-	return bytes, err
+	return token, err
 }
 
-func (em *EncryptionTokenMarshaler) Unmarshal(accountId string, token []byte) (map[string]types.AttributeValue, error) {
-	if len(token) == 0 {
+func (em *EncryptionTokenMarshaler) Unmarshal(accountId string, token *string) (map[string]types.AttributeValue, error) {
+	if token == nil {
 		return nil, nil
 	}
-	decToken, err := _decodeNextToken(token)
+	decToken, err := _decodeNextToken(*token)
 	if err != nil {
 		return nil, err
 	}

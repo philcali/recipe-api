@@ -43,7 +43,7 @@ func TestEncryptionMarshaler(t *testing.T) {
 			t.Fatalf("Threw an error on marshal: %s", err)
 		}
 		if token != nil {
-			t.Fatalf("Whoa %s is not nil!", token)
+			t.Fatalf("Whoa %s is not nil!", *token)
 		}
 	})
 
