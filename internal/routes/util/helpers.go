@@ -83,7 +83,7 @@ func SerializeResponseOK[T interface{}, R interface{}](delayed func(T) R, thing 
 	return SerializeResponse(delayed, thing, err, 200)
 }
 
-func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, indexName *string, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, indexName *string, event events.APIGatewayV2HTTPRequest, hash string) (events.APIGatewayV2HTTPResponse, error) {
 	var limit int
 	var nextToken *string
 	var err error
@@ -100,12 +100,12 @@ func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repos
 	}
 
 	if indexName == nil {
-		items, err = repo.List(Username(ctx), data.QueryParams{
+		items, err = repo.List(hash, data.QueryParams{
 			Limit:     limit,
 			NextToken: nextToken,
 		})
 	} else {
-		items, err = repo.ListByIndex(Username(ctx), *indexName, data.QueryParams{
+		items, err = repo.ListByIndex(hash, *indexName, data.QueryParams{
 			Limit:     limit,
 			NextToken: nextToken,
 		})
@@ -115,11 +115,15 @@ func _serializeList[T interface{}, I interface{}, R interface{}](repo data.Repos
 }
 
 func SerializeList[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return _serializeList(repo, thunk, nil, event, ctx)
+	return _serializeList(repo, thunk, nil, event, Username(ctx))
 }
 
 func SerializeListByIndex[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, indexName string, event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return _serializeList(repo, thunk, &indexName, event, ctx)
+	return _serializeList(repo, thunk, &indexName, event, Username(ctx))
+}
+
+func SerializeListByIndexAndHash[T interface{}, I interface{}, R interface{}](repo data.Repository[T, I], thunk func(T) R, indexName string, event events.APIGatewayV2HTTPRequest, hash string) (events.APIGatewayV2HTTPResponse, error) {
+	return _serializeList(repo, thunk, &indexName, event, hash)
 }
 
 func SerializeResponseNoContent(err error) (events.APIGatewayV2HTTPResponse, error) {

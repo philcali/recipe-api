@@ -38,10 +38,12 @@ func _convertToken(tokenDTO data.ApiTokenDTO) ApiToken {
 		expiresIn = aws.Time(time.UnixMilli(int64(*tokenDTO.ExpiresIn)))
 	}
 	return ApiToken{
-		Name:      tokenDTO.Name,
-		Value:     tokenDTO.SK,
-		Scopes:    tokenDTO.Scopes,
-		ExpiresIn: expiresIn,
+		Name:       tokenDTO.Name,
+		Value:      tokenDTO.SK,
+		Scopes:     tokenDTO.Scopes,
+		CreateTime: tokenDTO.CreateTime,
+		UpdateTime: tokenDTO.UpdateTime,
+		ExpiresIn:  expiresIn,
 	}
 }
 

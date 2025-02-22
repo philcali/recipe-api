@@ -10,13 +10,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	tokenData "philcali.me/recipes/internal/dynamodb/apitokens"
+	auditData "philcali.me/recipes/internal/dynamodb/audits"
 	recipeData "philcali.me/recipes/internal/dynamodb/recipes"
+	settingsData "philcali.me/recipes/internal/dynamodb/settings"
 	shoppingData "philcali.me/recipes/internal/dynamodb/shopping"
 	subscriberData "philcali.me/recipes/internal/dynamodb/subscriptions"
 	"philcali.me/recipes/internal/dynamodb/token"
 	"philcali.me/recipes/internal/routes"
 	"philcali.me/recipes/internal/routes/apitokens"
+	"philcali.me/recipes/internal/routes/audits"
 	"philcali.me/recipes/internal/routes/recipes"
+	"philcali.me/recipes/internal/routes/settings"
 	"philcali.me/recipes/internal/routes/shopping"
 	"philcali.me/recipes/internal/routes/subscriptions"
 	"philcali.me/recipes/internal/sns/services"
@@ -40,6 +44,8 @@ func NewApp() App {
 		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
 		shopping.NewRoute(shoppingData.NewShoppingListService(tableName, *client, marshaler)),
 		apitokens.NewRoute(tokenData.NewApiTokenService(tableName, *client, marshaler)),
+		audits.NewRoute(auditData.NewAuditService(tableName, *client, marshaler)),
+		settings.NewRoute(settingsData.NewSettingService(tableName, *client, marshaler)),
 		subscriptions.NewRoute(
 			subscriberData.NewSubscriptionService(tableName, *client, marshaler),
 			&services.NotificationSNSService{
