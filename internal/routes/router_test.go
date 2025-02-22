@@ -11,18 +11,25 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/google/uuid"
 	"golang.org/x/exp/maps"
 	"philcali.me/recipes/internal/data"
 	tokenData "philcali.me/recipes/internal/dynamodb/apitokens"
+	auditData "philcali.me/recipes/internal/dynamodb/audits"
 	recipeData "philcali.me/recipes/internal/dynamodb/recipes"
+	settingsData "philcali.me/recipes/internal/dynamodb/settings"
+	shareData "philcali.me/recipes/internal/dynamodb/shares"
 	shoppingData "philcali.me/recipes/internal/dynamodb/shopping"
 	subscriberData "philcali.me/recipes/internal/dynamodb/subscriptions"
 	"philcali.me/recipes/internal/dynamodb/token"
 	"philcali.me/recipes/internal/notifications"
 	"philcali.me/recipes/internal/routes"
 	"philcali.me/recipes/internal/routes/apitokens"
+	"philcali.me/recipes/internal/routes/audits"
 	"philcali.me/recipes/internal/routes/recipes"
+	"philcali.me/recipes/internal/routes/settings"
+	"philcali.me/recipes/internal/routes/shares"
 	"philcali.me/recipes/internal/routes/shopping"
 	"philcali.me/recipes/internal/routes/subscriptions"
 	"philcali.me/recipes/internal/test"
@@ -44,6 +51,9 @@ func NewLocalServer(t *testing.T) *LocalServer {
 		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
 		shopping.NewRoute(shoppingData.NewShoppingListService(tableName, *client, marshaler)),
 		apitokens.NewRouteWithIndex(tokenData.NewApiTokenService(tableName, *client, marshaler), "GS1"),
+		settings.NewRoute(settingsData.NewSettingService(tableName, *client, marshaler)),
+		audits.NewRouteWithIndex(auditData.NewAuditService(tableName, *client, marshaler), "GS1"),
+		shares.NewRouteWithIndex(shareData.NewShareService(tableName, *client, marshaler), "GS1"),
 		subscriptions.NewRoute(
 			subscriberData.NewSubscriptionService(tableName, *client, marshaler),
 			&LocalNotifications{
@@ -55,7 +65,12 @@ func NewLocalServer(t *testing.T) *LocalServer {
 		t.Fatalf("Failed to create a router: %s", err)
 	}
 	return &LocalServer{
-		Router: router,
+		Router:         router,
+		TableName:      tableName,
+		DynamoDB:       client,
+		TokenMarshaler: marshaler,
+		Username:       "nobody",
+		Email:          "nobody@email.com",
 	}
 }
 
@@ -80,10 +95,20 @@ func (ln *LocalNotifications) Unsubscribe(subscriberId string) error {
 }
 
 type LocalServer struct {
-	Router *routes.Router
+	Router         *routes.Router
+	DynamoDB       *dynamodb.Client
+	TokenMarshaler *token.EncryptionTokenMarshaler
+	TableName      string
+	Username       string
+	Email          string
 }
 
-func (ls *LocalServer) Request(t *testing.T, method string, path string, body []byte, out any) events.APIGatewayV2HTTPResponse {
+func (ls *LocalServer) UpdateIdentity(username, email string) {
+	ls.Username = username
+	ls.Email = email
+}
+
+func (ls *LocalServer) Request(t *testing.T, method string, path string, body []byte, out any, params map[string]string) events.APIGatewayV2HTTPResponse {
 	request := events.APIGatewayV2HTTPRequest{}
 	fd, err := os.ReadFile(filepath.Join("router_test", "template.json"))
 	if err != nil {
@@ -93,8 +118,13 @@ func (ls *LocalServer) Request(t *testing.T, method string, path string, body []
 		t.Fatalf("Failed to deserialize request template: %s", err)
 	}
 	request.RawPath = path
+	request.QueryStringParameters = params
 	request.RequestContext.HTTP.Method = method
 	request.RequestContext.HTTP.Path = path
+	request.RequestContext.Authorizer.Lambda["jwt"] = map[string]interface{}{
+		"username": string(ls.Username),
+		"email":    string(ls.Email),
+	}
 	request.Body = string(body)
 	response := ls.Router.Invoke(request, context.TODO())
 	if out != nil {
@@ -106,11 +136,15 @@ func (ls *LocalServer) Request(t *testing.T, method string, path string, body []
 }
 
 func (ls *LocalServer) Options(t *testing.T, path string) events.APIGatewayV2HTTPResponse {
-	return ls.Request(t, "OPTIONS", path, nil, nil)
+	return ls.Request(t, "OPTIONS", path, nil, nil, nil)
 }
 
 func (ls *LocalServer) Get(t *testing.T, out any, path string) events.APIGatewayV2HTTPResponse {
-	return ls.Request(t, "GET", path, nil, &out)
+	return ls.Request(t, "GET", path, nil, &out, nil)
+}
+
+func (ls *LocalServer) GetQuery(t *testing.T, out any, path string, params map[string]string) events.APIGatewayV2HTTPResponse {
+	return ls.Request(t, "GET", path, nil, &out, params)
 }
 
 func (ls *LocalServer) Post(t *testing.T, out any, path string, body any) events.APIGatewayV2HTTPResponse {
@@ -118,11 +152,11 @@ func (ls *LocalServer) Post(t *testing.T, out any, path string, body any) events
 	if err != nil {
 		t.Fatalf("Failed to serialize input: %s", err)
 	}
-	return ls.Request(t, "POST", path, payload, &out)
+	return ls.Request(t, "POST", path, payload, &out, nil)
 }
 
 func (ls *LocalServer) Delete(t *testing.T, path string) events.APIGatewayV2HTTPResponse {
-	return ls.Request(t, "DELETE", path, nil, nil)
+	return ls.Request(t, "DELETE", path, nil, nil, nil)
 }
 
 func (ls *LocalServer) Put(t *testing.T, out any, path string, body any) events.APIGatewayV2HTTPResponse {
@@ -130,7 +164,7 @@ func (ls *LocalServer) Put(t *testing.T, out any, path string, body any) events.
 	if err != nil {
 		t.Fatalf("Failed to serialize input: %s", err)
 	}
-	return ls.Request(t, "PUT", path, payload, &out)
+	return ls.Request(t, "PUT", path, payload, &out, nil)
 }
 
 func TestRouter(t *testing.T) {
@@ -322,6 +356,106 @@ func TestRouter(t *testing.T) {
 		del := server.Delete(t, fmt.Sprintf("/tokens/%s", apiToken.Value))
 		if del.StatusCode != 204 {
 			t.Fatalf("Expected 204 on delete, received: %d", del.StatusCode)
+		}
+	})
+
+	t.Run("SettingsWorkflow", func(t *testing.T) {
+		var defaultSettings settings.Settings
+		getSettings := server.Get(t, &defaultSettings, "/settings")
+		if getSettings.StatusCode != 200 {
+			t.Fatalf("Failed to get default settings: %d", getSettings.StatusCode)
+		}
+
+		if defaultSettings.AutoShareLists {
+			t.Fatalf("Expected the auto share lists to be false but was %v", defaultSettings.AutoShareLists)
+		}
+
+		if defaultSettings.AutoShareRecipes {
+			t.Fatalf("Expected the auto share recipes to be false but was %v", defaultSettings.AutoShareRecipes)
+		}
+
+		var updatedSettings settings.Settings
+		update := server.Post(t, &updatedSettings, "/settings", settings.SettingsInput{
+			AutoShareLists:   aws.Bool(true),
+			AutoShareRecipes: aws.Bool(true),
+		})
+		if update.StatusCode != 200 {
+			t.Fatalf("Expected to update settings: %d", update.StatusCode)
+		}
+
+		if !updatedSettings.AutoShareLists {
+			t.Fatalf("Expected the auto share lists to be true but was %v", updatedSettings.AutoShareLists)
+		}
+
+		if !updatedSettings.AutoShareRecipes {
+			t.Fatalf("Expected the auto share recipes to be true but was %v", updatedSettings.AutoShareRecipes)
+		}
+	})
+
+	t.Run("AuditWorkflow", func(t *testing.T) {
+		db := auditData.NewAuditService(server.TableName, *server.DynamoDB, server.TokenMarshaler)
+		created, err := db.Create("nobody", data.AuditInputDTO{
+			Message:   aws.String("This is a test"),
+			AccountId: aws.String("nobody"),
+		})
+		if err != nil {
+			t.Fatal("Failed to create test audit entry")
+		}
+		var listAudits data.QueryResults[audits.Audit]
+		getAudits := server.Get(t, &listAudits, "/audits")
+		if getAudits.StatusCode != 200 {
+			t.Fatalf("Expected list audits to return, got %d", getAudits.StatusCode)
+		}
+		if len(listAudits.Items) < 1 {
+			t.Fatalf("Expected there to be at least 1 entry, got %d", len(listAudits.Items))
+		}
+		if created.Message != listAudits.Items[0].Message {
+			t.Fatalf("Expected %v, got %v", created, listAudits.Items[0])
+		}
+		delResp := server.Delete(t, "/audits/"+created.SK)
+		if delResp.StatusCode != 204 {
+			t.Fatalf("Expected no content on delete: %d", delResp.StatusCode)
+		}
+	})
+
+	t.Run("ShareWorkflow", func(t *testing.T) {
+		var shareRequest shares.ShareRequest
+		status := data.REQUESTED
+		created := server.Post(t, &shareRequest, "/shares", shares.ShareRequestInput{
+			Approver:       aws.String("nobody2@email.com"),
+			ApprovalStatus: &status,
+		})
+		if created.StatusCode != 200 {
+			t.Fatalf("Failed to create share request %d", created.StatusCode)
+		}
+		var listResults data.QueryResults[shares.ShareRequest]
+		selfList := server.Get(t, &listResults, "/shares")
+		if selfList.StatusCode != 200 {
+			t.Fatalf("Failed to list %d", selfList.StatusCode)
+		}
+		if len(listResults.Items) < 1 {
+			t.Fatalf("Expected at least 1 request, got %d", len(listResults.Items))
+		}
+		if listResults.Items[0].ApprovalStatus != shareRequest.ApprovalStatus {
+			t.Fatalf("Expected %s, got %s", data.REQUESTED, listResults.Items[0].ApprovalStatus)
+		}
+		server.UpdateIdentity("nobody2", "nobody2@email.com")
+		requestList := server.GetQuery(t, &listResults, "/shares", map[string]string{
+			"status": "REQUESTED",
+		})
+		if requestList.StatusCode != 200 {
+			t.Fatalf("Expected 200 but got %d", requestList.StatusCode)
+		}
+		if len(listResults.Items) < 1 {
+			t.Fatalf("Expected at least 1, but got %d", len(listResults.Items))
+		}
+		var updated shares.ShareRequest
+		status = data.APPROVED
+		updateRes := server.Put(t, &updated, "/shares/"+shareRequest.Id, shares.ShareRequestInput{
+			ApprovalStatus: &status,
+		})
+		if updateRes.StatusCode != 200 {
+			t.Fatalf("Expected 200 but got %d", updateRes.StatusCode)
 		}
 	})
 
