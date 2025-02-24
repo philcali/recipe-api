@@ -13,6 +13,7 @@ import (
 	auditData "philcali.me/recipes/internal/dynamodb/audits"
 	recipeData "philcali.me/recipes/internal/dynamodb/recipes"
 	settingsData "philcali.me/recipes/internal/dynamodb/settings"
+	shareData "philcali.me/recipes/internal/dynamodb/shares"
 	shoppingData "philcali.me/recipes/internal/dynamodb/shopping"
 	subscriberData "philcali.me/recipes/internal/dynamodb/subscriptions"
 	"philcali.me/recipes/internal/dynamodb/token"
@@ -21,6 +22,7 @@ import (
 	"philcali.me/recipes/internal/routes/audits"
 	"philcali.me/recipes/internal/routes/recipes"
 	"philcali.me/recipes/internal/routes/settings"
+	"philcali.me/recipes/internal/routes/shares"
 	"philcali.me/recipes/internal/routes/shopping"
 	"philcali.me/recipes/internal/routes/subscriptions"
 	"philcali.me/recipes/internal/sns/services"
@@ -46,6 +48,7 @@ func NewApp() App {
 		apitokens.NewRoute(tokenData.NewApiTokenService(tableName, *client, marshaler)),
 		audits.NewRoute(auditData.NewAuditService(tableName, *client, marshaler)),
 		settings.NewRoute(settingsData.NewSettingService(tableName, *client, marshaler)),
+		shares.NewRoute(shareData.NewShareService(tableName, *client, marshaler)),
 		subscriptions.NewRoute(
 			subscriberData.NewSubscriptionService(tableName, *client, marshaler),
 			&services.NotificationSNSService{

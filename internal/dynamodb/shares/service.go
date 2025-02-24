@@ -17,7 +17,7 @@ func NewShareService(tableName string, client dynamodb.Client, marshaler token.T
 		DynamoDB:       client,
 		TableName:      tableName,
 		TokenMarshaler: marshaler,
-		Name:           "ShareRequests",
+		Name:           "ShareRequest",
 		Shim: func(pk, sk string) data.ShareRequestDTO {
 			return data.ShareRequestDTO{PK: pk, SK: sk}
 		},
@@ -25,7 +25,7 @@ func NewShareService(tableName string, client dynamodb.Client, marshaler token.T
 			return data.ShareRequestDTO{
 				PK:             pk,
 				SK:             sk,
-				FirstIndex:     fmt.Sprintf("%s:ShareRequests", *srid.Approver),
+				FirstIndex:     fmt.Sprintf("%s:ShareRequest", *srid.Approver),
 				Requester:      *srid.Requester,
 				Approver:       *srid.Approver,
 				ApprovalStatus: *srid.ApprovalStatus,
