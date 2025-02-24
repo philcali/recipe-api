@@ -40,3 +40,9 @@ func (mh *ManageGlobalUserHandler) Apply(record events.DynamoDBEventRecord) erro
 	}
 	return nil
 }
+
+func DefaultUserHandler(db data.UserService) *ManageGlobalUserHandler {
+	return &ManageGlobalUserHandler{
+		Users: db,
+	}
+}

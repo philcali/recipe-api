@@ -28,7 +28,7 @@ func NewUserService(t *testing.T) data.UserService {
 	return users.NewUserService(tableName, *client, marshaler)
 }
 
-func TestEvents(t *testing.T) {
+func TestUsers(t *testing.T) {
 	userData := NewUserService(t)
 
 	t.Run("ManagedUserHandler", func(t *testing.T) {
