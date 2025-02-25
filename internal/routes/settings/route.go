@@ -39,7 +39,7 @@ func _convertSettings(data data.SettingsDTO) Settings {
 }
 
 func (s *SettingsService) GetSettings(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	item, err := s.data.Get("Global", util.Username(ctx))
+	item, err := s.data.Get(util.Username(ctx), "Global")
 	if _, ok := err.(*exceptions.NotFoundError); ok {
 		return util.SerializeResponseOK(_convertSettings, data.SettingsDTO{
 			AutoShareLists:   false,
@@ -56,12 +56,12 @@ func (s *SettingsService) PutSettings(event events.APIGatewayV2HTTPRequest, ctx 
 	if err := json.Unmarshal([]byte(event.Body), &updateItem); err != nil {
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
-	item, err := s.data.CreateWithItemId("Global", updateItem, util.Username(ctx))
+	item, err := s.data.CreateWithItemId(util.Username(ctx), updateItem, "Global")
 	if err == nil {
 		return util.SerializeResponseOK(_convertSettings, item, nil)
 	}
 	if _, ok := err.(*exceptions.ConflictError); ok {
-		item, err = s.data.Update("Global", util.Username(ctx), updateItem)
+		item, err = s.data.Update(util.Username(ctx), "Global", updateItem)
 		return util.SerializeResponseOK(_convertSettings, item, err)
 	}
 	return events.APIGatewayV2HTTPResponse{}, exceptions.InternalServer(err.Error())

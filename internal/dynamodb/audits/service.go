@@ -21,12 +21,16 @@ func NewAuditService(tableName string, client dynamodb.Client, marshaler token.T
 		},
 		OnCreate: func(aid data.AuditInputDTO, t time.Time, pk, sk string) data.AuditDTO {
 			return data.AuditDTO{
-				PK:         pk,
-				SK:         sk,
-				FirstIndex: fmt.Sprintf("%s:Audit", *aid.AccountId),
-				Message:    *aid.Message,
-				CreateTime: t,
-				UpdateTime: t,
+				PK:           pk,
+				SK:           sk,
+				FirstIndex:   fmt.Sprintf("%s:Audit", *aid.AccountId),
+				NewValues:    aid.NewValues,
+				OldValues:    aid.OldValues,
+				Action:       *aid.Action,
+				ResourceId:   *aid.ResourceId,
+				ResourceType: *aid.ResourceType,
+				CreateTime:   t,
+				UpdateTime:   t,
 			}
 		},
 	}
