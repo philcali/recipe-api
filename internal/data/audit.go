@@ -3,19 +3,27 @@ package data
 import "time"
 
 type AuditDTO struct {
-	PK         string    `dynamodbav:"PK"`
-	SK         string    `dynamodbav:"SK"`
-	FirstIndex string    `dynamodbav:"GS1-PK"`
-	Message    string    `dynamodbav:"message"`
-	ExpiresIn  *int      `dynamodbav:"expiresIn"`
-	CreateTime time.Time `dynamodbav:"createTime"`
-	UpdateTime time.Time `dynamodbav:"updateTime"`
+	PK           string                  `dynamodbav:"PK"`
+	SK           string                  `dynamodbav:"SK"`
+	FirstIndex   string                  `dynamodbav:"GS1-PK"`
+	ResourceId   string                  `dynamodbav:"resourceId"`
+	ResourceType string                  `dynamodbav:"resourceType"`
+	Action       string                  `dynamodbav:"action"`
+	NewValues    *map[string]interface{} `dynamodbav:"newValues"`
+	OldValues    *map[string]interface{} `dynamodbav:"oldValues"`
+	ExpiresIn    *int                    `dynamodbav:"expiresIn"`
+	CreateTime   time.Time               `dynamodbav:"createTime"`
+	UpdateTime   time.Time               `dynamodbav:"updateTime"`
 }
 
 type AuditInputDTO struct {
-	Message   *string `dynamodbav:"message"`
-	AccountId *string `dynamodbav:"accountId"`
-	ExpiresIn *int    `dynamodbav:"expiresIn"`
+	AccountId    *string                 `dynamodbav:"accountId"`
+	ResourceId   *string                 `dynamodbav:"resourceId"`
+	ResourceType *string                 `dynamodbav:"resourceType"`
+	Action       *string                 `dynamodbav:"action"`
+	NewValues    *map[string]interface{} `dynamodbav:"newValues"`
+	OldValues    *map[string]interface{} `dynamodbav:"oldValues"`
+	ExpiresIn    *int                    `dynamodbav:"expiresIn"`
 }
 
 type AuditRepository interface {

@@ -54,6 +54,11 @@ func TestAudits(t *testing.T) {
 			modify := events.DynamoDBEventRecord{
 				EventName: "MODIFY",
 				Change: events.DynamoDBStreamRecord{
+					OldImage: map[string]events.DynamoDBAttributeValue{
+						"name": events.NewStringAttribute("A Tasty Treat"),
+						"SK":   events.NewStringAttribute(id),
+						"PK":   events.NewStringAttribute(pk),
+					},
 					NewImage: map[string]events.DynamoDBAttributeValue{
 						"name": events.NewStringAttribute("A Very Tasty Treat"),
 						"SK":   events.NewStringAttribute(id),
@@ -94,12 +99,102 @@ func TestAudits(t *testing.T) {
 					t.Fatalf("Failed to list audit entry for %v", err)
 				}
 				item := listEntry.Items[0]
-				expectedMessage := handler.Formats["Recipe"](record)
-				if item.Message != *expectedMessage {
-					t.Fatalf("Expected '%s', but got '%s'", item.Message, *expectedMessage)
+				var action string
+				switch record.EventName {
+				case "INSERT":
+					action = "CREATED"
+				case "MODIFY":
+					action = "UPDATED"
+				case "REMOVE":
+					action = "DELETED"
 				}
-				if err := auditData.Delete(accountId, item.SK); err != nil {
-					t.Fatalf("Failed to delete %v", item)
+				if item.Action != action {
+					t.Fatalf("Expected %s, but got %s", action, item.Action)
+				}
+				if item.ResourceType != "Recipe" {
+					t.Fatalf("Expected type to be 'Recipe', but got %s", item.ResourceType)
+				}
+				if err := handler.Audit.Delete(accountId, item.SK); err != nil {
+					t.Fatalf("Expected no error, but got %v", err)
+				}
+			}
+		})
+
+		t.Run("ApiTokenAudit", func(t *testing.T) {
+			id := uuid.NewString()
+			accountId := uuid.NewString()
+			pk := fmt.Sprintf("%s:ApiToken", accountId)
+			insert := events.DynamoDBEventRecord{
+				EventName: "INSERT",
+				Change: events.DynamoDBStreamRecord{
+					NewImage: map[string]events.DynamoDBAttributeValue{
+						"name":   events.NewStringAttribute("A Tasty Treat"),
+						"SK":     events.NewStringAttribute(id),
+						"PK":     events.NewStringAttribute("Global:ApiToken"),
+						"GS1-PK": events.NewStringAttribute(pk),
+					},
+				},
+			}
+
+			modify := events.DynamoDBEventRecord{
+				EventName: "MODIFY",
+				Change: events.DynamoDBStreamRecord{
+					OldImage: map[string]events.DynamoDBAttributeValue{
+						"name":   events.NewStringAttribute("A Tasty Treat"),
+						"SK":     events.NewStringAttribute(id),
+						"PK":     events.NewStringAttribute("Global:ApiToken"),
+						"GS1-PK": events.NewStringAttribute(pk),
+					},
+					NewImage: map[string]events.DynamoDBAttributeValue{
+						"name":   events.NewStringAttribute("A Very Tasty Treat"),
+						"SK":     events.NewStringAttribute(id),
+						"PK":     events.NewStringAttribute("Global:ApiToken"),
+						"GS1-PK": events.NewStringAttribute(pk),
+					},
+				},
+			}
+
+			remove := events.DynamoDBEventRecord{
+				EventName: "REMOVE",
+				Change: events.DynamoDBStreamRecord{
+					OldImage: map[string]events.DynamoDBAttributeValue{
+						"name":   events.NewStringAttribute("A Very Tasty Treat"),
+						"SK":     events.NewStringAttribute(id),
+						"PK":     events.NewStringAttribute("Global:ApiToken"),
+						"GS1-PK": events.NewStringAttribute(pk),
+					},
+				},
+			}
+
+			records := []events.DynamoDBEventRecord{
+				insert,
+				modify,
+				remove,
+			}
+
+			for _, record := range records {
+				if !handler.Filter(record) {
+					t.Fatalf("Expected true for %v", record)
+				}
+				err := handler.Apply(record)
+				if err != nil {
+					t.Fatalf("Failed to create audit entry for %v: %v", record, err)
+				}
+				listEntry, err := auditData.List(accountId, data.QueryParams{
+					Limit: 1,
+				})
+				if err != nil {
+					t.Fatalf("Failed to list audit entry for %v", err)
+				}
+				item := listEntry.Items[0]
+				if item.ResourceType != "ApiToken" {
+					t.Fatalf("Expected type to be 'ApiToken', but got %s", item.ResourceType)
+				}
+				if item.ResourceId != id {
+					t.Fatalf("Expected resource Id to be %s, but got %s", id, item.ResourceId)
+				}
+				if err := handler.Audit.Delete(accountId, item.SK); err != nil {
+					t.Fatalf("Expected no error, but got %v", err)
 				}
 			}
 		})

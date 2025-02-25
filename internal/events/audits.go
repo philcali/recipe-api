@@ -1,8 +1,6 @@
 package events
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -14,8 +12,6 @@ import (
 // Five years for things to enpire
 const EXPIRY_LOG = int(time.Hour + (24 * 365 * 5))
 
-type AuditMessageFormat func(record events.DynamoDBEventRecord) *string
-
 func _getRecordImage(record events.DynamoDBEventRecord) map[string]events.DynamoDBAttributeValue {
 	if record.Change.NewImage != nil {
 		return record.Change.NewImage
@@ -24,123 +20,96 @@ func _getRecordImage(record events.DynamoDBEventRecord) map[string]events.Dynamo
 	}
 }
 
-func _formatRecipe(record events.DynamoDBEventRecord) *string {
-	image := _getRecordImage(record)
-	var action string
-	switch record.EventName {
-	case "INSERT":
-		action = "created"
-	case "MODIFY":
-		action = "updated"
-	case "REMOVE":
-		action = "deleted"
-	}
-	name := image["name"].String()
-	id := image["SK"].String()
-	return aws.String(fmt.Sprintf("Recipe %s (%s) was %s", id, name, action))
-}
-
-func _formatApiToken(record events.DynamoDBEventRecord) *string {
-	image := _getRecordImage(record)
-	var action string
-	switch record.EventName {
-	case "INSERT":
-		action = "created"
-	case "MODIFY":
-		action = "updated"
-	case "REMOVE":
-		action = "deleted"
-	}
-	name := image["name"].String()
-	id := image["SK"].String()
-	return aws.String(fmt.Sprintf("API token %s (%s) was %s", id, name, action))
-}
-
-func _formatSetting(record events.DynamoDBEventRecord) *string {
-	action := "updated"
-	if record.EventName == "INSERT" {
-		action = "applied"
-	}
-	return aws.String(fmt.Sprintf("New settings were %s", action))
-}
-
-func _formatList(record events.DynamoDBEventRecord) *string {
-	image := _getRecordImage(record)
-	var action string
-	switch record.EventName {
-	case "INSERT":
-		action = "was created"
-	case "REMOVE":
-		action = "was deleted"
-		exp, ok := image["expiresIn"]
-		if ok {
-			millis, err := strconv.Atoi(exp.Number())
-			if err != nil {
-				return nil
-			}
-			if millis < int(time.Now().UnixMilli()) {
-				action = "has expired"
-			}
+func _convertAttribute(value events.DynamoDBAttributeValue) interface{} {
+	switch value.DataType() {
+	case events.DataTypeString:
+		return value.String()
+	case events.DataTypeNumber:
+		return value.Number()
+	case events.DataTypeBoolean:
+		return value.Boolean()
+	case events.DataTypeBinary:
+		return value.Binary()
+	case events.DataTypeStringSet:
+		return value.StringSet()
+	case events.DataTypeBinarySet:
+		return value.BinarySet()
+	case events.DataTypeNumberSet:
+		return value.NumberSet()
+	case events.DataTypeList:
+		ls := make([]interface{}, len(value.List()))
+		for _, item := range value.List() {
+			ls = append(ls, _convertAttribute(item))
 		}
-	case "MODIFY":
-		action = "was updated"
+		return ls
+	case events.DataTypeMap:
+		return _flattenResourceProperties(value.Map())
 	}
-	name := image["name"].String()
-	id := image["SK"].String()
-	return aws.String(fmt.Sprintf("Shopping list %s (%s) %s", id, name, action))
+	return nil
 }
 
-func _formatShare(record events.DynamoDBEventRecord) *string {
-	image := _getRecordImage(record)
-	var action string
-	switch record.EventName {
-	case "INSERT":
-		action = "created"
-	case "MODIFY":
-		action = "updated"
-	case "REMOVE":
-		action = "deleted"
-		exp, ok := image["expiresIn"]
-		if ok {
-			millis, err := strconv.Atoi(exp.Number())
-			if err != nil {
-				return nil
-			}
-			if millis < int(time.Now().UnixMilli()) {
-				action = "expired"
-			}
+func _flattenResourceProperties(image map[string]events.DynamoDBAttributeValue) *map[string]interface{} {
+	if image == nil {
+		return nil
+	}
+	properties := make(map[string]interface{}, len(image))
+	for field, value := range image {
+		switch field {
+		case "PK":
+			fallthrough
+		case "SK":
+			fallthrough
+		case "GS1-PK":
+			continue
+		default:
+			properties[field] = _convertAttribute(value)
 		}
 	}
-	approver := image["name"].String()
-	status := image["approvalStatus"].String()
-	id := image["SK"].String()
-	return aws.String(fmt.Sprintf("Share request %s (%s) %s was %s", id, approver, status, action))
+	return &properties
 }
 
 type CreateAuditEntryHandler struct {
-	Audit   data.AuditRepository
-	Formats map[string]AuditMessageFormat
+	Audit         data.AuditRepository
+	ResourceTypes []string
 }
 
 func (ch *CreateAuditEntryHandler) Filter(record events.DynamoDBEventRecord) bool {
 	pk := _getRecordImage(record)["PK"]
 	parts := strings.Split(pk.String(), ":")
-	_, ok := ch.Formats[parts[1]]
-	return ok
+	for _, t := range ch.ResourceTypes {
+		if t == parts[1] {
+			return true
+		}
+	}
+	return false
 }
 
 func (ch *CreateAuditEntryHandler) Apply(record events.DynamoDBEventRecord) error {
-	pk := _getRecordImage(record)["PK"]
+	image := _getRecordImage(record)
+	pk := image["PK"]
+	resourceId := image["SK"].String()
 	parts := strings.Split(pk.String(), ":")
-	format := ch.Formats[parts[1]]
-	message := format(record)
-	if message == nil {
-		return nil
+	if parts[1] == "ApiToken" {
+		parts = strings.Split(image["GS1-PK"].String(), ":")
 	}
-	_, err := ch.Audit.Create(parts[0], data.AuditInputDTO{
-		Message:   message,
-		AccountId: &parts[0],
-		ExpiresIn: aws.Int(int(time.Now().Add(time.Duration(EXPIRY_LOG)).UnixMilli())),
+	var action string
+	switch record.EventName {
+	case "INSERT":
+		action = "CREATED"
+	case "MODIFY":
+		action = "UPDATED"
+	case "REMOVE":
+		action = "DELETED"
+	}
+	accountId := parts[0]
+	_, err := ch.Audit.Create(accountId, data.AuditInputDTO{
+		AccountId:    &accountId,
+		ResourceId:   &resourceId,
+		ResourceType: aws.String(parts[1]),
+		Action:       &action,
+		ExpiresIn:    aws.Int(int(time.Now().UnixMilli()) + EXPIRY_LOG),
+		NewValues:    _flattenResourceProperties(record.Change.NewImage),
+		OldValues:    _flattenResourceProperties(record.Change.OldImage),
 	})
 	return err
 }
@@ -148,12 +117,12 @@ func (ch *CreateAuditEntryHandler) Apply(record events.DynamoDBEventRecord) erro
 func DefaultAuditHandler(db data.AuditRepository) *CreateAuditEntryHandler {
 	return &CreateAuditEntryHandler{
 		Audit: db,
-		Formats: map[string]AuditMessageFormat{
-			"Recipe":       _formatRecipe,
-			"ApiToken":     _formatApiToken,
-			"Settings":     _formatSetting,
-			"ShoppingList": _formatList,
-			"ShareRequest": _formatShare,
+		ResourceTypes: []string{
+			"Recipe",
+			"ApiToken",
+			"Settings",
+			"ShoppingList",
+			"ShareRequest",
 		},
 	}
 }

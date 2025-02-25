@@ -28,9 +28,14 @@ func NewRoute(data data.AuditRepository) routes.Service {
 
 func _convertAudit(auditDTO data.AuditDTO) Audit {
 	return Audit{
-		Message:    auditDTO.Message,
-		CreateTime: auditDTO.CreateTime,
-		Id:         auditDTO.SK,
+		CreateTime:   auditDTO.CreateTime,
+		UpdateTime:   auditDTO.UpdateTime,
+		Action:       auditDTO.Action,
+		ResourceType: auditDTO.ResourceType,
+		ResourceId:   auditDTO.ResourceId,
+		NewValues:    auditDTO.NewValues,
+		OldValues:    auditDTO.OldValues,
+		Id:           auditDTO.SK,
 	}
 }
 

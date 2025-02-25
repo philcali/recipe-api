@@ -395,8 +395,10 @@ func TestRouter(t *testing.T) {
 	t.Run("AuditWorkflow", func(t *testing.T) {
 		db := auditData.NewAuditService(server.TableName, *server.DynamoDB, server.TokenMarshaler)
 		created, err := db.Create("nobody", data.AuditInputDTO{
-			Message:   aws.String("This is a test"),
-			AccountId: aws.String("nobody"),
+			ResourceId:   aws.String("resourceId"),
+			ResourceType: aws.String("Recipe"),
+			Action:       aws.String("CREATED"),
+			AccountId:    aws.String("nobody"),
 		})
 		if err != nil {
 			t.Fatal("Failed to create test audit entry")
@@ -409,7 +411,7 @@ func TestRouter(t *testing.T) {
 		if len(listAudits.Items) < 1 {
 			t.Fatalf("Expected there to be at least 1 entry, got %d", len(listAudits.Items))
 		}
-		if created.Message != listAudits.Items[0].Message {
+		if created.ResourceId != listAudits.Items[0].ResourceId {
 			t.Fatalf("Expected %v, got %v", created, listAudits.Items[0])
 		}
 		delResp := server.Delete(t, "/audits/"+created.SK)
