@@ -34,7 +34,7 @@ func NewRoute(data data.ShareRequestRepository) routes.Service {
 func _convertShare(shareDTO data.ShareRequestDTO) ShareRequest {
 	return ShareRequest{
 		Id:             shareDTO.SK,
-		Approver:       shareDTO.Approver,
+		Approver:       *shareDTO.Approver,
 		Requester:      shareDTO.Requester,
 		CreateTime:     shareDTO.CreateTime,
 		UpdateTime:     shareDTO.UpdateTime,
@@ -82,6 +82,7 @@ func (s *ShareRequestService) CreateShare(event events.APIGatewayV2HTTPRequest, 
 		ApprovalStatus: &requested,
 		ExpiresIn:      &expiresIn,
 		Requester:      aws.String(claims["email"]),
+		RequesterId:    aws.String(util.Username(ctx)),
 	})
 	return util.SerializeResponseOK(_convertShare, created, err)
 }

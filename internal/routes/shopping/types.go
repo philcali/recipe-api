@@ -21,7 +21,7 @@ type ShoppingListInput struct {
 	ExpiresIn *time.Time          `json:"expiresIn,omitempty"`
 }
 
-func (l *ShoppingListInput) ToData() data.ShoppingListInputDTO {
+func (l *ShoppingListInput) ToData(owner string) data.ShoppingListInputDTO {
 	var expiresIn *int = nil
 	if l.ExpiresIn != nil {
 		expiresIn = aws.Int(int(l.ExpiresIn.Unix()))
@@ -29,6 +29,7 @@ func (l *ShoppingListInput) ToData() data.ShoppingListInputDTO {
 	return data.ShoppingListInputDTO{
 		Name:      l.Name,
 		ExpiresIn: expiresIn,
+		Owner:     &owner,
 		Items: util.MapOnList(l.Items, func(sli ShoppingListItem) data.ShoppingListItemDTO {
 			return data.ShoppingListItemDTO{
 				Name:        sli.Name,
@@ -43,6 +44,7 @@ func (l *ShoppingListInput) ToData() data.ShoppingListInputDTO {
 type ShoppingList struct {
 	Id         string             `json:"listId"`
 	Name       string             `json:"name"`
+	Owner      *string            `json:"owner"`
 	Items      []ShoppingListItem `json:"items"`
 	ExpiresIn  *time.Time         `json:"expiresIn,omitempty"`
 	CreateTime time.Time          `json:"createTime"`
@@ -60,6 +62,7 @@ func NewShoppingList(list data.ShoppingListDTO) ShoppingList {
 		CreateTime: list.CreateTime,
 		UpdateTime: list.UpdateTime,
 		ExpiresIn:  expiresIn,
+		Owner:      list.Owner,
 		Items: *util.MapOnList(&list.Items, func(slid data.ShoppingListItemDTO) ShoppingListItem {
 			return ShoppingListItem{
 				Name:        slid.Name,

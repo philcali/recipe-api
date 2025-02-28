@@ -3,6 +3,7 @@ package shopping
 import (
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"philcali.me/recipes/internal/data"
@@ -22,6 +23,8 @@ func NewShoppingListService(tableName string, client dynamodb.Client, marshaler 
 				SK:         sk,
 				CreateTime: createTime,
 				UpdateTime: createTime,
+				Owner:      slid.Owner,
+				Shared:     aws.Bool(false),
 				Name:       *slid.Name,
 				Items:      *slid.Items,
 				ExpiresIn:  slid.ExpiresIn,

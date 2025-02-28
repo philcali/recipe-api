@@ -21,6 +21,8 @@ type RecipeDTO struct {
 	SK                 string          `dynamodbav:"SK"`
 	Name               string          `dynamodbav:"name"`
 	Instructions       string          `dynamodbav:"instructions"`
+	Owner              *string         `dynamodbav:"owner"`
+	Shared             *bool           `dynamodbav:"shared"`
 	Thumbnail          *string         `dynamodbav:"thumbnail"`
 	Type               *string         `dynamodbav:"type"`
 	Ingredients        []IngredientDTO `dynamodbav:"ingredients"`
@@ -33,6 +35,7 @@ type RecipeDTO struct {
 
 type RecipeInputDTO struct {
 	Name               *string          `dynamodbav:"name"`
+	Owner              *string          `dynamodbav:"owner"`
 	Instructions       *string          `dynamodbav:"instructions"`
 	Thumbnail          *string          `dynamodbav:"thumbnail"`
 	Type               *string          `dynamodbav:"type"`

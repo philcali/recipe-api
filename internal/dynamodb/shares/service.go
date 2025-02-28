@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"philcali.me/recipes/internal/data"
@@ -22,21 +23,29 @@ func NewShareService(tableName string, client dynamodb.Client, marshaler token.T
 			return data.ShareRequestDTO{PK: pk, SK: sk}
 		},
 		OnCreate: func(srid data.ShareRequestInputDTO, t time.Time, pk, sk string) data.ShareRequestDTO {
-			return data.ShareRequestDTO{
+			request := data.ShareRequestDTO{
 				PK:             pk,
 				SK:             sk,
-				FirstIndex:     fmt.Sprintf("%s:ShareRequest", *srid.Approver),
 				Requester:      *srid.Requester,
-				Approver:       *srid.Approver,
+				RequesterId:    srid.RequesterId,
+				Approver:       srid.Approver,
+				ApproverId:     srid.ApproverId,
 				ApprovalStatus: *srid.ApprovalStatus,
 				ExpiresIn:      srid.ExpiresIn,
 				CreateTime:     t,
 				UpdateTime:     t,
 			}
+			if srid.Approver != nil {
+				request.FirstIndex = aws.String(fmt.Sprintf("%s:ShareRequest", *srid.Approver))
+			} else {
+				request.FirstIndex = aws.String("ShareRequest")
+			}
+			return request
 		},
 		OnUpdate: func(srid data.ShareRequestInputDTO, ub expression.UpdateBuilder) {
 			if srid.ApprovalStatus != nil {
 				ub.Set(expression.Name("approvalStatus"), expression.Value(srid.ApprovalStatus))
+				ub.Remove(expression.Name("GS1-PK"))
 				if strings.EqualFold(string(data.APPROVED), string(*srid.ApprovalStatus)) {
 					ub.Set(expression.Name("approverId"), expression.Value(srid.ApproverId))
 					ub.Remove(expression.Name("expiresIn"))

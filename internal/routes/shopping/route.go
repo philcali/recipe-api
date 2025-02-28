@@ -45,7 +45,8 @@ func (sl *ShoppingListService) CreateShoppingList(event events.APIGatewayV2HTTPR
 	if err := json.Unmarshal([]byte(event.Body), &input); err != nil {
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
-	created, err := sl.data.Create(util.Username(ctx), input.ToData())
+	claims := util.AuthorizationClaims(event)
+	created, err := sl.data.Create(util.Username(ctx), input.ToData(claims["email"]))
 	return util.SerializeResponseOK(NewShoppingList, created, err)
 }
 
@@ -54,7 +55,8 @@ func (sl *ShoppingListService) UpdateShoppingList(event events.APIGatewayV2HTTPR
 	if err := json.Unmarshal([]byte(event.Body), &input); err != nil {
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
-	item, err := sl.data.Update(util.Username(ctx), util.RequestParam(ctx, "shoppingListId"), input.ToData())
+	claims := util.AuthorizationClaims(event)
+	item, err := sl.data.Update(util.Username(ctx), util.RequestParam(ctx, "shoppingListId"), input.ToData(claims["email"]))
 	return util.SerializeResponseOK(NewShoppingList, item, err)
 }
 
