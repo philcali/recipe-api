@@ -91,7 +91,9 @@ type CopySharingResourceHandler struct {
 func (ch *CopySharingResourceHandler) Filter(record events.DynamoDBEventRecord) bool {
 	pk := record.Change.Keys["PK"]
 	parts := strings.Split(pk.String(), ":")
-	return record.EventName == "INSERT" && (parts[1] == "Recipe" || parts[1] == "ShoppingList") && record.Change.NewImage["shared"].IsNull()
+	return record.EventName == "INSERT" &&
+		(parts[1] == "Recipe" || parts[1] == "ShoppingList") &&
+		(record.Change.NewImage["shared"].IsNull() || !record.Change.NewImage["shared"].Boolean())
 }
 
 func (ch *CopySharingResourceHandler) Apply(record events.DynamoDBEventRecord) error {
