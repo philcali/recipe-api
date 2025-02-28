@@ -3,6 +3,7 @@ package recipes
 import (
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"philcali.me/recipes/internal/data"
@@ -29,6 +30,8 @@ func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.
 				Nutrients:          *input.Nutrients,
 				Thumbnail:          input.Thumbnail,
 				Type:               input.Type,
+				Owner:              input.Owner,
+				Shared:             aws.Bool(false),
 				PrepareTimeMinutes: input.PrepareTimeMinutes,
 				NumberOfServings:   input.NumberOfServings,
 				CreateTime:         now,

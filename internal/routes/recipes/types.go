@@ -48,7 +48,7 @@ func ConvertIngredientDataToTransfer(in data.IngredientDTO) Ingredient {
 	}
 }
 
-func (r *RecipeInput) ToData() data.RecipeInputDTO {
+func (r *RecipeInput) ToData(owner string) data.RecipeInputDTO {
 	return data.RecipeInputDTO{
 		Name:               r.Name,
 		Instructions:       r.Instructions,
@@ -57,6 +57,7 @@ func (r *RecipeInput) ToData() data.RecipeInputDTO {
 		NumberOfServings:   r.NumberOfServings,
 		Thumbnail:          r.Thumbnail,
 		Type:               r.Type,
+		Owner:              &owner,
 		Nutrients: util.MapOnList(r.Nutrients, func(n Nutrient) data.NutrientDTO {
 			return data.NutrientDTO{
 				Name:   n.Name,
@@ -75,6 +76,7 @@ type Recipe struct {
 	NumberOfServings   *int         `json:"numberOfServings"`
 	Thumbnail          *string      `json:"thumbnail"`
 	Type               *string      `json:"type"`
+	Owner              *string      `json:"email"`
 	Nutrients          []Nutrient   `json:"nutrients"`
 	Ingredients        []Ingredient `json:"ingredients"`
 	CreateTime         time.Time    `json:"createTime"`
@@ -109,6 +111,7 @@ func NewRecipe(recipe data.RecipeDTO, stripThumbail bool) Recipe {
 		PrepareTimeMinutes: recipe.PrepareTimeMinutes,
 		Instructions:       recipe.Instructions,
 		NumberOfServings:   recipe.NumberOfServings,
+		Owner:              recipe.Owner,
 		Thumbnail:          thumbnail,
 		Type:               recipe.Type,
 		Ingredients:        *util.MapOnList(&recipe.Ingredients, ConvertIngredientDataToTransfer),

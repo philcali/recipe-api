@@ -13,9 +13,10 @@ const (
 type ShareRequestDTO struct {
 	PK             string         `dynamodbav:"PK"`
 	SK             string         `dynamodbav:"SK"`
-	FirstIndex     string         `dynamodbav:"GS1-PK"`
+	FirstIndex     *string        `dynamodbav:"GS1-PK"`
 	Requester      string         `dynamodbav:"requester"`
-	Approver       string         `dynamodbav:"approver"`
+	RequesterId    *string        `dynamodbav:"requesterId"`
+	Approver       *string        `dynamodbav:"approver"`
 	ApproverId     *string        `dynamodbav:"approverId"`
 	ApprovalStatus ApprovalStatus `dynamodbav:"approvalStatus"`
 	ExpiresIn      *int           `dynamodbav:"expiresIn"`
@@ -25,6 +26,7 @@ type ShareRequestDTO struct {
 
 type ShareRequestInputDTO struct {
 	Requester      *string         `dynamodbav:"requester"`
+	RequesterId    *string         `dynamodbav:"requesterId"`
 	Approver       *string         `dynamodbav:"approver"`
 	ApproverId     *string         `dynamodbav:"approverId"`
 	ApprovalStatus *ApprovalStatus `dynamodbav:"approvalStatus"`

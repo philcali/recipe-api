@@ -13,6 +13,8 @@ type ShoppingListDTO struct {
 	PK         string                `dynamodbav:"PK"`
 	SK         string                `dynamodbav:"SK"`
 	Name       string                `dynamodbav:"name"`
+	Owner      *string               `dynamodbav:"owner"`
+	Shared     *bool                 `dynamodbav:"shared"`
 	Items      []ShoppingListItemDTO `dynamodbav:"items"`
 	ExpiresIn  *int                  `dynamodbav:"expiresIn"`
 	CreateTime time.Time             `dynamodbav:"createTime"`
@@ -21,6 +23,7 @@ type ShoppingListDTO struct {
 
 type ShoppingListInputDTO struct {
 	Name      *string                `dynamodbav:"name"`
+	Owner     *string                `dynamodbav:"owner"`
 	Items     *[]ShoppingListItemDTO `dynamodbav:"items"`
 	ExpiresIn *int                   `dynamodbav:"expiresIn"`
 }

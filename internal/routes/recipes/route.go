@@ -45,7 +45,8 @@ func (rs *RecipeService) CreateRecipe(event events.APIGatewayV2HTTPRequest, ctx 
 	if err := json.Unmarshal([]byte(event.Body), &input); err != nil {
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
-	created, err := rs.data.Create(util.Username(ctx), input.ToData())
+	claims := util.AuthorizationClaims(event)
+	created, err := rs.data.Create(util.Username(ctx), input.ToData(claims["email"]))
 	return util.SerializeResponseOK(StripFields(event), created, err)
 }
 
@@ -54,7 +55,8 @@ func (rs *RecipeService) UpdateRecipe(event events.APIGatewayV2HTTPRequest, ctx 
 	if err := json.Unmarshal([]byte(event.Body), &input); err != nil {
 		return events.APIGatewayV2HTTPResponse{}, exceptions.InvalidInput(err.Error())
 	}
-	item, err := rs.data.Update(util.Username(ctx), util.RequestParam(ctx, "recipeId"), input.ToData())
+	claims := util.AuthorizationClaims(event)
+	item, err := rs.data.Update(util.Username(ctx), util.RequestParam(ctx, "recipeId"), input.ToData(claims["email"]))
 	return util.SerializeResponseOK(StripFields(event), item, err)
 }
 
