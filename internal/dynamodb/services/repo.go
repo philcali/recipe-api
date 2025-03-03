@@ -58,6 +58,10 @@ func _listView[T interface{}, I interface{}](rs *RepositoryDynamoDBService[T, I]
 	if err != nil {
 		return data.QueryResults[T]{}, err
 	}
+	scanForward := true
+	if params.SortOrder != nil && strings.EqualFold("descending", *params.SortOrder) {
+		scanForward = false
+	}
 	output, err := rs.DynamoDB.Query(context.TODO(), &dynamodb.QueryInput{
 		TableName:                 aws.String(rs.TableName),
 		IndexName:                 indexName,
@@ -66,6 +70,7 @@ func _listView[T interface{}, I interface{}](rs *RepositoryDynamoDBService[T, I]
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		ExclusiveStartKey:         startKey,
+		ScanIndexForward:          &scanForward,
 	})
 	if err != nil {
 		return data.QueryResults[T]{}, err
