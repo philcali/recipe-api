@@ -38,8 +38,8 @@ func _convertAttribute(value events.DynamoDBAttributeValue) interface{} {
 		return value.NumberSet()
 	case events.DataTypeList:
 		ls := make([]interface{}, len(value.List()))
-		for _, item := range value.List() {
-			ls = append(ls, _convertAttribute(item))
+		for i, item := range value.List() {
+			ls[i] = _convertAttribute(item)
 		}
 		return ls
 	case events.DataTypeMap:
