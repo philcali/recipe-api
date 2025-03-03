@@ -3,6 +3,7 @@ package data
 type QueryParams struct {
 	Limit     int     `json:"limit"`
 	NextToken *string `json:"nextToken"`
+	SortOrder *string `json:"sortOrder"`
 }
 
 func (q *QueryParams) GetLimit() *int32 {
