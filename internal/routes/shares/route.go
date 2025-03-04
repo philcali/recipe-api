@@ -45,10 +45,16 @@ func _convertShare(shareDTO data.ShareRequestDTO) ShareRequest {
 func (s *ShareRequestService) GetRoutes() map[string]routes.Route {
 	return map[string]routes.Route{
 		"GET:/shares":             util.AuthorizedRoute(s.ListShares),
+		"GET:/shares/:shareId":    util.AuthorizedRoute(s.GetShare),
 		"POST:/shares":            util.AuthorizedRoute(s.CreateShare),
 		"PUT:/shares/:shareId":    util.AuthorizedRoute(s.UpdateShare),
 		"DELETE:/shares/:shareId": util.AuthorizedRoute(s.DeleteShare),
 	}
+}
+
+func (s *ShareRequestService) GetShare(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+	item, err := s.data.Get(util.Username(ctx), util.RequestParam(ctx, "shareId"))
+	return util.SerializeResponseOK(_convertShare, item, err)
 }
 
 func (s *ShareRequestService) ListShares(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {

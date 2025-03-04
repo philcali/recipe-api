@@ -441,6 +441,11 @@ func TestRouter(t *testing.T) {
 		if listResults.Items[0].ApprovalStatus != shareRequest.ApprovalStatus {
 			t.Fatalf("Expected %s, got %s", data.REQUESTED, listResults.Items[0].ApprovalStatus)
 		}
+		var getShare shares.ShareRequest
+		g := server.Get(t, &getShare, "/shares/"+shareRequest.Id)
+		if g.StatusCode != 200 {
+			t.Fatalf("Failed to get share request %d", g.StatusCode)
+		}
 		server.UpdateIdentity("nobody2", "nobody2@email.com")
 		requestList := server.GetQuery(t, &listResults, "/shares", map[string]string{
 			"status": "REQUESTED",
