@@ -2,6 +2,7 @@ package events
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -111,7 +112,8 @@ func TestCopyResources(t *testing.T) {
 					"owner": events.NewStringAttribute("nobody@email.com"),
 					"items": events.NewListAttribute([]events.DynamoDBAttributeValue{
 						events.NewMapAttribute(map[string]events.DynamoDBAttributeValue{
-							"name": events.NewStringAttribute("Milk"),
+							"name":      events.NewStringAttribute("Milk"),
+							"completed": events.NewBooleanAttribute(true),
 						}),
 					}),
 					"updateToken": events.NewStringAttribute("abc-123"),
@@ -123,6 +125,48 @@ func TestCopyResources(t *testing.T) {
 
 		if !updateHandler.Filter(modify) {
 			t.Fatalf("Expected the update handler to filter record %v", modify)
+		}
+
+		approvalStatus := data.APPROVED
+		approvedShare, err := sharingData.Create(accountId, data.ShareRequestInputDTO{
+			Requester:      aws.String("philip.cali@gmail.com"),
+			RequesterId:    aws.String(accountId),
+			Approver:       aws.String("philip.cali@example.com"),
+			ApproverId:     aws.String(uuid.NewString()),
+			ApprovalStatus: &approvalStatus,
+		})
+		if err != nil {
+			t.Fatalf("Expected to create a share entry, got %v", err)
+		}
+
+		listData := shopping.NewShoppingListService(tableName, *client, marshaler)
+
+		existingEntry, err := listData.CreateWithItemId(*approvedShare.ApproverId, data.ShoppingListInputDTO{
+			Name:  aws.String("Giant"),
+			Owner: aws.String("nobody@example,com"),
+			Items: &[]data.ShoppingListItemDTO{
+				{
+					Name: "Giant",
+				},
+			},
+		}, itemId)
+
+		fmt.Printf("Approver ID: %s, %s", existingEntry.PK, *approvedShare.ApproverId)
+		if err = updateHandler.Apply(modify); err != nil {
+			t.Fatalf("Expected the modification to work, got %v", err)
+		}
+
+		updatedEntry, err := listData.Get(*approvedShare.ApproverId, existingEntry.SK)
+		if err != nil {
+			t.Fatalf("Expected the entry to still exist, %v", err)
+		}
+
+		if len(updatedEntry.Items) != 1 && !updatedEntry.Items[0].Completed {
+			t.Fatalf("Expected the entry to sync, but got %v", updatedEntry)
+		}
+
+		if updatedEntry.UpdateToken == nil || !strings.EqualFold("abc-123", *updatedEntry.UpdateToken) {
+			t.Fatalf("Expected the updated entry to have a token: %v", updatedEntry.UpdateToken)
 		}
 	})
 
