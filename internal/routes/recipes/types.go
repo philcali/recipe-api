@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/google/uuid"
 	"philcali.me/recipes/internal/data"
 	"philcali.me/recipes/internal/routes/util"
 )
@@ -58,6 +60,7 @@ func (r *RecipeInput) ToData(owner string) data.RecipeInputDTO {
 		Thumbnail:          r.Thumbnail,
 		Type:               r.Type,
 		Owner:              &owner,
+		UpdateToken:        aws.String(uuid.NewString()),
 		Nutrients: util.MapOnList(r.Nutrients, func(n Nutrient) data.NutrientDTO {
 			return data.NutrientDTO{
 				Name:   n.Name,

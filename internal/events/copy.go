@@ -81,40 +81,15 @@ func _convertStreamImageToItem(otherAccountId string, image map[string]events.Dy
 	return converted
 }
 
-type CopySharingResourceHandler struct {
-	Setting   data.SettingsRepository
-	Sharing   data.ShareRequestRepository
-	DynamoDB  *dynamodb.Client
-	TableName string
+func _sharedResourceFilter(t string) bool {
+	return t == "Recipe" || t == "ShoppingList"
 }
 
-func (ch *CopySharingResourceHandler) Filter(record events.DynamoDBEventRecord) bool {
-	pk := record.Change.Keys["PK"]
-	parts := strings.Split(pk.String(), ":")
-	return record.EventName == "INSERT" &&
-		(parts[1] == "Recipe" || parts[1] == "ShoppingList") &&
-		(record.Change.NewImage["shared"].IsNull() || !record.Change.NewImage["shared"].Boolean())
-}
-
-func (ch *CopySharingResourceHandler) Apply(record events.DynamoDBEventRecord) error {
-	pk := record.Change.Keys["PK"]
-	parts := strings.Split(pk.String(), ":")
-	ownerId := parts[0]
-	resourceType := parts[1]
-	s, err := ch.Setting.Get(ownerId, "Global")
-	if err != nil {
-		return nil
-	}
-	if resourceType == "Recipe" && !s.AutoShareRecipes {
-		return nil
-	}
-	if resourceType == "ShoppingList" && !s.AutoShareLists {
-		return nil
-	}
+func _copyShareResource(tableName string, ownerId string, condition string, record events.DynamoDBEventRecord, ddb *dynamodb.Client, shareRepo data.ShareRequestRepository) error {
 	var nextToken *string
 	truncated := true
 	for truncated {
-		sharing, err := ch.Sharing.List(ownerId, data.QueryParams{
+		sharing, err := shareRepo.List(ownerId, data.QueryParams{
 			Limit:     100,
 			NextToken: nextToken,
 		})
@@ -134,12 +109,16 @@ func (ch *CopySharingResourceHandler) Apply(record events.DynamoDBEventRecord) e
 			}
 
 			converted := _convertStreamImageToItem(*otherAccountId, record.Change.NewImage)
-			_, err := ch.DynamoDB.PutItem(context.TODO(), &dynamodb.PutItemInput{
-				Item:      converted,
-				TableName: aws.String(ch.TableName),
+			_, err := ddb.PutItem(context.TODO(), &dynamodb.PutItemInput{
+				Item:                converted,
+				TableName:           aws.String(tableName),
+				ConditionExpression: aws.String(condition),
 			})
 
 			if err != nil {
+				if _, ok := err.(*types.ConditionalCheckFailedException); ok {
+					continue
+				}
 				return err
 			}
 		}
@@ -148,4 +127,73 @@ func (ch *CopySharingResourceHandler) Apply(record events.DynamoDBEventRecord) e
 		truncated = nextToken != nil
 	}
 	return nil
+}
+
+type UpdateSharedResourceHandler struct {
+	Sharing   data.ShareRequestRepository
+	DynamoDB  *dynamodb.Client
+	TableName string
+}
+
+func (uh *UpdateSharedResourceHandler) Filter(record events.DynamoDBEventRecord) bool {
+	pk := record.Change.Keys["PK"]
+	parts := strings.Split(pk.String(), ":")
+	updateToken, isTokenSet := record.Change.OldImage["updateToken"]
+	return record.EventName == "MODIFY" &&
+		_sharedResourceFilter(parts[1]) &&
+		(!isTokenSet || updateToken.String() != record.Change.NewImage["updateToken"].String())
+}
+
+func (uh *UpdateSharedResourceHandler) Apply(record events.DynamoDBEventRecord) error {
+	pk := record.Change.Keys["PK"]
+	parts := strings.Split(pk.String(), ":")
+	ownerId := parts[0]
+	return _copyShareResource(
+		uh.TableName,
+		ownerId,
+		"attribute_exists(PK) and attribute_exists(SK)",
+		record,
+		uh.DynamoDB,
+		uh.Sharing,
+	)
+}
+
+type CopySharingResourceHandler struct {
+	Setting   data.SettingsRepository
+	Sharing   data.ShareRequestRepository
+	DynamoDB  *dynamodb.Client
+	TableName string
+}
+
+func (ch *CopySharingResourceHandler) Filter(record events.DynamoDBEventRecord) bool {
+	pk := record.Change.Keys["PK"]
+	parts := strings.Split(pk.String(), ":")
+	return record.EventName == "INSERT" &&
+		_sharedResourceFilter(parts[1]) &&
+		(record.Change.NewImage["shared"].IsNull() || !record.Change.NewImage["shared"].Boolean())
+}
+
+func (ch *CopySharingResourceHandler) Apply(record events.DynamoDBEventRecord) error {
+	pk := record.Change.Keys["PK"]
+	parts := strings.Split(pk.String(), ":")
+	ownerId := parts[0]
+	resourceType := parts[1]
+	s, err := ch.Setting.Get(ownerId, "Global")
+	if err != nil {
+		return nil
+	}
+	if resourceType == "Recipe" && !s.AutoShareRecipes {
+		return nil
+	}
+	if resourceType == "ShoppingList" && !s.AutoShareLists {
+		return nil
+	}
+	return _copyShareResource(
+		ch.TableName,
+		ownerId,
+		"attribute_not_exists(PK) and attribute_not_exists(SK)",
+		record,
+		ch.DynamoDB,
+		ch.Sharing,
+	)
 }

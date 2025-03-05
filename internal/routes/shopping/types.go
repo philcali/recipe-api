@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/google/uuid"
 	"philcali.me/recipes/internal/data"
 	"philcali.me/recipes/internal/routes/util"
 )
@@ -27,9 +28,10 @@ func (l *ShoppingListInput) ToData(owner string) data.ShoppingListInputDTO {
 		expiresIn = aws.Int(int(l.ExpiresIn.Unix()))
 	}
 	return data.ShoppingListInputDTO{
-		Name:      l.Name,
-		ExpiresIn: expiresIn,
-		Owner:     &owner,
+		Name:        l.Name,
+		ExpiresIn:   expiresIn,
+		Owner:       &owner,
+		UpdateToken: aws.String(uuid.NewString()),
 		Items: util.MapOnList(l.Items, func(sli ShoppingListItem) data.ShoppingListItemDTO {
 			return data.ShoppingListItemDTO{
 				Name:        sli.Name,

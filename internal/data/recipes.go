@@ -22,6 +22,7 @@ type RecipeDTO struct {
 	Name               string          `dynamodbav:"name"`
 	Instructions       string          `dynamodbav:"instructions"`
 	Owner              *string         `dynamodbav:"owner"`
+	UpdateToken        *string         `dynamodbav:"updateToken"`
 	Shared             *bool           `dynamodbav:"shared"`
 	Thumbnail          *string         `dynamodbav:"thumbnail"`
 	Type               *string         `dynamodbav:"type"`
@@ -36,6 +37,7 @@ type RecipeDTO struct {
 type RecipeInputDTO struct {
 	Name               *string          `dynamodbav:"name"`
 	Owner              *string          `dynamodbav:"owner"`
+	UpdateToken        *string          `dynamodbav:"updateToken"`
 	Instructions       *string          `dynamodbav:"instructions"`
 	Thumbnail          *string          `dynamodbav:"thumbnail"`
 	Type               *string          `dynamodbav:"type"`

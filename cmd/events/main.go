@@ -42,6 +42,11 @@ func HandleRequest(ctx context.Context, event lambdaEvents.DynamoDBEvent) error 
 			DynamoDB:  client,
 			TableName: tableName,
 		},
+		&events.UpdateSharedResourceHandler{
+			Sharing:   shareData,
+			DynamoDB:  client,
+			TableName: tableName,
+		},
 	}
 
 	// TODO: make a router for this

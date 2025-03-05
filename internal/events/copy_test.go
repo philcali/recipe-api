@@ -29,6 +29,103 @@ func TestCopyResources(t *testing.T) {
 	t.Logf("Successfully created local resources running on %d", test.LOCAL_DDB_PORT)
 	marshaler := token.NewGCM()
 
+	t.Run("UpdateHandler", func(t *testing.T) {
+		sharingData := shares.NewShareService(tableName, *client, marshaler)
+
+		updateHandler := &UpdateSharedResourceHandler{
+			Sharing:   sharingData,
+			DynamoDB:  client,
+			TableName: tableName,
+		}
+
+		accountId := uuid.NewString()
+		millis := time.Now()
+		itemId := uuid.NewString()
+		content, _ := millis.MarshalText()
+		modify := events.DynamoDBEventRecord{
+			EventName: "MODIFY",
+			Change: events.DynamoDBStreamRecord{
+				Keys: map[string]events.DynamoDBAttributeValue{
+					"PK": events.NewStringAttribute(fmt.Sprintf("%s:ShoppingList", accountId)),
+					"SK": events.NewStringAttribute(itemId),
+				},
+				OldImage: map[string]events.DynamoDBAttributeValue{
+					"PK":    events.NewStringAttribute(fmt.Sprintf("%s:ShoppingList", accountId)),
+					"SK":    events.NewStringAttribute(itemId),
+					"name":  events.NewStringAttribute("Giant"),
+					"owner": events.NewStringAttribute("nobody@email.com"),
+					"items": events.NewListAttribute([]events.DynamoDBAttributeValue{
+						events.NewMapAttribute(map[string]events.DynamoDBAttributeValue{
+							"name": events.NewStringAttribute("Milk"),
+						}),
+					}),
+					"updateToken": events.NewStringAttribute("abc-123"),
+					"createTime":  events.NewStringAttribute(string(content)),
+					"updateTime":  events.NewStringAttribute(string(content)),
+				},
+				NewImage: map[string]events.DynamoDBAttributeValue{
+					"PK":    events.NewStringAttribute(fmt.Sprintf("%s:ShoppingList", accountId)),
+					"SK":    events.NewStringAttribute(itemId),
+					"name":  events.NewStringAttribute("Giant"),
+					"owner": events.NewStringAttribute("nobody@email.com"),
+					"items": events.NewListAttribute([]events.DynamoDBAttributeValue{
+						events.NewMapAttribute(map[string]events.DynamoDBAttributeValue{
+							"name": events.NewStringAttribute("Milk"),
+						}),
+					}),
+					"updateToken": events.NewStringAttribute("abc-123"),
+					"createTime":  events.NewStringAttribute(string(content)),
+					"updateTime":  events.NewStringAttribute(string(content)),
+				},
+			},
+		}
+
+		if updateHandler.Filter(modify) {
+			t.Fatalf("Expected the record to skip: %v", modify)
+		}
+
+		modify = events.DynamoDBEventRecord{
+			EventName: "MODIFY",
+			Change: events.DynamoDBStreamRecord{
+				Keys: map[string]events.DynamoDBAttributeValue{
+					"PK": events.NewStringAttribute(fmt.Sprintf("%s:ShoppingList", accountId)),
+					"SK": events.NewStringAttribute(itemId),
+				},
+				OldImage: map[string]events.DynamoDBAttributeValue{
+					"PK":    events.NewStringAttribute(fmt.Sprintf("%s:ShoppingList", accountId)),
+					"SK":    events.NewStringAttribute(itemId),
+					"name":  events.NewStringAttribute("Giant"),
+					"owner": events.NewStringAttribute("nobody@email.com"),
+					"items": events.NewListAttribute([]events.DynamoDBAttributeValue{
+						events.NewMapAttribute(map[string]events.DynamoDBAttributeValue{
+							"name": events.NewStringAttribute("Milk"),
+						}),
+					}),
+					"createTime": events.NewStringAttribute(string(content)),
+					"updateTime": events.NewStringAttribute(string(content)),
+				},
+				NewImage: map[string]events.DynamoDBAttributeValue{
+					"PK":    events.NewStringAttribute(fmt.Sprintf("%s:ShoppingList", accountId)),
+					"SK":    events.NewStringAttribute(itemId),
+					"name":  events.NewStringAttribute("Giant"),
+					"owner": events.NewStringAttribute("nobody@email.com"),
+					"items": events.NewListAttribute([]events.DynamoDBAttributeValue{
+						events.NewMapAttribute(map[string]events.DynamoDBAttributeValue{
+							"name": events.NewStringAttribute("Milk"),
+						}),
+					}),
+					"updateToken": events.NewStringAttribute("abc-123"),
+					"createTime":  events.NewStringAttribute(string(content)),
+					"updateTime":  events.NewStringAttribute(string(content)),
+				},
+			},
+		}
+
+		if !updateHandler.Filter(modify) {
+			t.Fatalf("Expected the update handler to filter record %v", modify)
+		}
+	})
+
 	t.Run("CopyHandler", func(t *testing.T) {
 		settingData := settings.NewSettingService(tableName, *client, marshaler)
 		sharingData := shares.NewShareService(tableName, *client, marshaler)
@@ -65,7 +162,7 @@ func TestCopyResources(t *testing.T) {
 
 		millis := time.Now()
 		itemId := uuid.NewString()
-		content, err := millis.MarshalText()
+		content, _ := millis.MarshalText()
 		insert := events.DynamoDBEventRecord{
 			EventName: "INSERT",
 			Change: events.DynamoDBStreamRecord{

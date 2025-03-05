@@ -10,22 +10,24 @@ type ShoppingListItemDTO struct {
 }
 
 type ShoppingListDTO struct {
-	PK         string                `dynamodbav:"PK"`
-	SK         string                `dynamodbav:"SK"`
-	Name       string                `dynamodbav:"name"`
-	Owner      *string               `dynamodbav:"owner"`
-	Shared     *bool                 `dynamodbav:"shared"`
-	Items      []ShoppingListItemDTO `dynamodbav:"items"`
-	ExpiresIn  *int                  `dynamodbav:"expiresIn"`
-	CreateTime time.Time             `dynamodbav:"createTime"`
-	UpdateTime time.Time             `dynamodbav:"updateTime"`
+	PK          string                `dynamodbav:"PK"`
+	SK          string                `dynamodbav:"SK"`
+	Name        string                `dynamodbav:"name"`
+	Owner       *string               `dynamodbav:"owner"`
+	UpdateToken *string               `dynamodbav:"updateToken"`
+	Shared      *bool                 `dynamodbav:"shared"`
+	Items       []ShoppingListItemDTO `dynamodbav:"items"`
+	ExpiresIn   *int                  `dynamodbav:"expiresIn"`
+	CreateTime  time.Time             `dynamodbav:"createTime"`
+	UpdateTime  time.Time             `dynamodbav:"updateTime"`
 }
 
 type ShoppingListInputDTO struct {
-	Name      *string                `dynamodbav:"name"`
-	Owner     *string                `dynamodbav:"owner"`
-	Items     *[]ShoppingListItemDTO `dynamodbav:"items"`
-	ExpiresIn *int                   `dynamodbav:"expiresIn"`
+	Name        *string                `dynamodbav:"name"`
+	Owner       *string                `dynamodbav:"owner"`
+	UpdateToken *string                `dynamodbav:"updateToken"`
+	Items       *[]ShoppingListItemDTO `dynamodbav:"items"`
+	ExpiresIn   *int                   `dynamodbav:"expiresIn"`
 }
 
 type ShoppingListDataService interface {
