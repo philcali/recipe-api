@@ -3,6 +3,7 @@ package audits
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"philcali.me/recipes/internal/data"
@@ -26,6 +27,36 @@ func NewRoute(data data.AuditRepository) routes.Service {
 	return NewRouteWithIndex(data, os.Getenv("INDEX_NAME_1"))
 }
 
+func _stripFields(event events.APIGatewayV2HTTPRequest) func(d data.AuditDTO) Audit {
+	return func(d data.AuditDTO) Audit {
+		newValues := d.NewValues
+		oldValues := d.OldValues
+		params := event.QueryStringParameters
+		if params != nil {
+			if stripFields, ok := params["stripFields"]; ok {
+				fieldNames := strings.Split(stripFields, ",")
+				for _, fieldName := range fieldNames {
+					if newValues != nil {
+						delete(*newValues, fieldName)
+					}
+					if oldValues != nil {
+						delete(*oldValues, fieldName)
+					}
+				}
+			}
+		}
+		return _convertAudit(data.AuditDTO{
+			CreateTime:   d.CreateTime,
+			UpdateTime:   d.UpdateTime,
+			Action:       d.Action,
+			ResourceType: d.ResourceType,
+			ResourceId:   d.ResourceId,
+			NewValues:    newValues,
+			OldValues:    oldValues,
+		})
+	}
+}
+
 func _convertAudit(auditDTO data.AuditDTO) Audit {
 	return Audit{
 		CreateTime:   auditDTO.CreateTime,
@@ -47,7 +78,7 @@ func (as *AuditService) GetRoutes() map[string]routes.Route {
 }
 
 func (as *AuditService) ListAudits(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
-	return util.SerializeListByIndex(as.data, _convertAudit, as.indexName, event, ctx)
+	return util.SerializeListByIndex(as.data, _stripFields(event), as.indexName, event, ctx)
 }
 
 func (as *AuditService) DeleteAudit(event events.APIGatewayV2HTTPRequest, ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {

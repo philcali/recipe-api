@@ -394,11 +394,15 @@ func TestRouter(t *testing.T) {
 
 	t.Run("AuditWorkflow", func(t *testing.T) {
 		db := auditData.NewAuditService(server.TableName, *server.DynamoDB, server.TokenMarshaler)
+		newValues := make(map[string]interface{}, 2)
+		newValues["fieldName"] = string("value")
+		newValues["otherField"] = string("content")
 		created, err := db.Create("nobody", data.AuditInputDTO{
 			ResourceId:   aws.String("resourceId"),
 			ResourceType: aws.String("Recipe"),
 			Action:       aws.String("CREATED"),
 			AccountId:    aws.String("nobody"),
+			NewValues:    &newValues,
 		})
 		if err != nil {
 			t.Fatal("Failed to create test audit entry")
@@ -413,6 +417,23 @@ func TestRouter(t *testing.T) {
 		}
 		if created.ResourceId != listAudits.Items[0].ResourceId {
 			t.Fatalf("Expected %v, got %v", created, listAudits.Items[0])
+		}
+		var updatedList data.QueryResults[audits.Audit]
+		getQueryAudits := server.GetQuery(t, &updatedList, "/audits", map[string]string{
+			"stripFields": "otherField",
+		})
+		if getQueryAudits.StatusCode != 200 {
+			t.Fatalf("Expected list audits with stripFields to return, got %d", getQueryAudits.StatusCode)
+		}
+		if len(updatedList.Items) < 1 {
+			t.Fatalf("Expected there to be at least 1 entry, got %d", len(updatedList.Items))
+		}
+		if updatedList.Items[0].NewValues == nil {
+			t.Fatalf("Looks like the new values on the entry is not set %v", updatedList.Items[0].NewValues)
+		}
+		newValues = *updatedList.Items[0].NewValues
+		if _, ok := newValues["otherField"]; ok {
+			t.Fatalf("Epected 'otherField' to be stripped, got %v", newValues)
 		}
 		delResp := server.Delete(t, "/audits/"+created.SK)
 		if delResp.StatusCode != 204 {
