@@ -53,6 +53,7 @@ func _stripFields(event events.APIGatewayV2HTTPRequest) func(d data.AuditDTO) Au
 			ResourceId:   d.ResourceId,
 			NewValues:    newValues,
 			OldValues:    oldValues,
+			SK:           d.SK,
 		})
 	}
 }
