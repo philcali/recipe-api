@@ -120,10 +120,9 @@ func (rs *RepositoryDynamoDBService[T, I]) CreateWithItemId(accountId string, in
 		ExpressionAttributeNames: expr.Names(),
 	})
 	if err != nil {
-		if _, ok := err.(*types.ConditionalCheckFailedException); ok {
+		if strings.Contains(err.Error(), "ConditionalCheckFailedException") {
 			return shim, exceptions.Conflict(strings.ToLower(rs.Name), itemId)
 		}
-		return shim, err
 	}
 	return shim, err
 }
@@ -153,7 +152,7 @@ func (rs *RepositoryDynamoDBService[T, I]) Update(accountId string, itemId strin
 		ReturnValues:              types.ReturnValueAllNew,
 	})
 	if err != nil {
-		if _, ok := err.(*types.ConditionalCheckFailedException); ok {
+		if strings.Contains(err.Error(), "ConditionalCheckFailedException") {
 			return shim, exceptions.NotFound(strings.ToLower(rs.Name), itemId)
 		}
 		return shim, err
