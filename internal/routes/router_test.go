@@ -390,6 +390,17 @@ func TestRouter(t *testing.T) {
 		if !updatedSettings.AutoShareRecipes {
 			t.Fatalf("Expected the auto share recipes to be true but was %v", updatedSettings.AutoShareRecipes)
 		}
+		var newUpdatedSettings settings.Settings
+		newUpdate := server.Post(t, &newUpdatedSettings, "/settings", settings.SettingsInput{
+			AutoShareLists:   aws.Bool(true),
+			AutoShareRecipes: aws.Bool(false),
+		})
+		if newUpdate.StatusCode != 200 {
+			t.Fatalf("Expected 200, got %d, %v", newUpdate.StatusCode, newUpdate.Body)
+		}
+		if newUpdatedSettings.AutoShareRecipes {
+			t.Fatalf("Expected the auto share recipes to update, but was %v", newUpdatedSettings.AutoShareRecipes)
+		}
 	})
 
 	t.Run("AuditWorkflow", func(t *testing.T) {
