@@ -19,15 +19,16 @@ func NewShoppingListService(tableName string, client dynamodb.Client, marshaler 
 		Name:           "ShoppingList",
 		OnCreate: func(slid data.ShoppingListInputDTO, createTime time.Time, pk string, sk string) data.ShoppingListDTO {
 			return data.ShoppingListDTO{
-				PK:         pk,
-				SK:         sk,
-				CreateTime: createTime,
-				UpdateTime: createTime,
-				Owner:      slid.Owner,
-				Shared:     aws.Bool(false),
-				Name:       *slid.Name,
-				Items:      *slid.Items,
-				ExpiresIn:  slid.ExpiresIn,
+				PK:          pk,
+				SK:          sk,
+				CreateTime:  createTime,
+				UpdateTime:  createTime,
+				Owner:       slid.Owner,
+				Shared:      aws.Bool(false),
+				Name:        *slid.Name,
+				Items:       *slid.Items,
+				ExpiresIn:   slid.ExpiresIn,
+				UpdateToken: slid.UpdateToken,
 			}
 		},
 		OnUpdate: func(slid data.ShoppingListInputDTO, ub expression.UpdateBuilder) {
@@ -39,6 +40,9 @@ func NewShoppingListService(tableName string, client dynamodb.Client, marshaler 
 			}
 			if slid.Items != nil {
 				ub.Set(expression.Name("items"), expression.Value(slid.Items))
+			}
+			if slid.UpdateToken != nil {
+				ub.Set(expression.Name("updateToken"), expression.Value(slid.UpdateToken))
 			}
 		},
 		Shim: func(pk, sk string) data.ShoppingListDTO {
