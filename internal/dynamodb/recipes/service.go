@@ -29,6 +29,7 @@ func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.
 				Ingredients:        *input.Ingredients,
 				Nutrients:          *input.Nutrients,
 				Thumbnail:          input.Thumbnail,
+				UpdateToken:        input.UpdateToken,
 				Type:               input.Type,
 				Owner:              input.Owner,
 				Shared:             aws.Bool(false),
@@ -59,6 +60,9 @@ func NewRecipeService(tableName string, client dynamodb.Client, marshaler token.
 			}
 			if input.Thumbnail != nil {
 				update.Set(expression.Name("thumbnail"), expression.Value(input.Thumbnail))
+			}
+			if input.UpdateToken != nil {
+				update.Set(expression.Name("updateToken"), expression.Value(input.UpdateToken))
 			}
 			if input.Type != nil {
 				update.Set(expression.Name("type"), expression.Value(input.Type))
