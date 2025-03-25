@@ -19,6 +19,7 @@ const (
 	SUBSCRIPTIONS_WRITE Scope = "subscriptions"
 	TOKENS_READ         Scope = "tokens.readonly"
 	TOKENS_WRITE        Scope = "tokens"
+	PROVIDER_READ       Scope = "providers.readonly"
 )
 
 type ApiTokenDTO struct {

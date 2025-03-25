@@ -23,9 +23,9 @@ func NewExternalService() routes.Service {
 
 func (es *ExternalService) GetRoutes() map[string]routes.Route {
 	return map[string]routes.Route{
-		"GET:/external/mealdb":               util.AuthorizedRoute(es.Search),
-		"GET:/external/mealdb/:mealId/meals": util.AuthorizedRoute(es.Random),
-		"GET:/external/mealdb/random":        util.AuthorizedRoute(es.Random),
+		"GET:/providers/mealdb":                 util.AuthorizedRoute(es.Search),
+		"GET:/providers/mealdb/:mealId/recipes": util.AuthorizedRoute(es.Lookup),
+		"GET:/providers/mealdb/random":          util.AuthorizedRoute(es.Random),
 	}
 }
 
