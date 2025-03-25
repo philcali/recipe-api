@@ -20,6 +20,7 @@ import (
 	"philcali.me/recipes/internal/routes"
 	"philcali.me/recipes/internal/routes/apitokens"
 	"philcali.me/recipes/internal/routes/audits"
+	"philcali.me/recipes/internal/routes/external"
 	"philcali.me/recipes/internal/routes/recipes"
 	"philcali.me/recipes/internal/routes/settings"
 	"philcali.me/recipes/internal/routes/shares"
@@ -43,6 +44,7 @@ func NewApp() App {
 	snsClient := sns.NewFromConfig(cfg)
 	marshaler := token.NewGCM()
 	router := routes.NewRouter(
+		external.NewExternalService(),
 		recipes.NewRoute(recipeData.NewRecipeService(tableName, *client, marshaler)),
 		shopping.NewRoute(shoppingData.NewShoppingListService(tableName, *client, marshaler)),
 		apitokens.NewRoute(tokenData.NewApiTokenService(tableName, *client, marshaler)),
