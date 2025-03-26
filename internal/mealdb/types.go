@@ -75,22 +75,22 @@ func ToRecipe(m Meal) recipes.Recipe {
 				if measurement == "To taste" || measurement == "To serve" {
 					measurement = "whole"
 				} else {
-					parts := strings.SplitAfterN(measurement, " ", 2)
-					value, err := strconv.Atoi(parts[0])
-					if err == nil {
-						amount = float32(value)
-					} else if parts[0] == "½" {
-						amount = 0.5
-					} else if strings.Contains(parts[0], "/") {
-						n := strings.Split(parts[0], "/")
-						numerator, nerr := strconv.Atoi(n[0])
-						denominator, derr := strconv.Atoi(n[1])
-						if nerr == nil && derr == nil {
-							amount = float32(numerator) / float32(denominator)
+					pv, pm, found := strings.Cut(measurement, " ")
+					if found {
+						value, err := strconv.Atoi(pv)
+						if err == nil {
+							amount = float32(value)
+						} else if pv == "½" {
+							amount = 0.5
+						} else if strings.Contains(pv, "/") {
+							n := strings.Split(pv, "/")
+							numerator, nerr := strconv.Atoi(n[0])
+							denominator, derr := strconv.Atoi(n[1])
+							if nerr == nil && derr == nil {
+								amount = float32(numerator) / float32(denominator)
+							}
 						}
-					}
-					if len(parts) >= 2 {
-						measurement = parts[1]
+						measurement = pm
 					} else {
 						measurement = "whole"
 					}
