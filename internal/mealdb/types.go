@@ -3,6 +3,7 @@ package mealdb
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"philcali.me/recipes/internal/routes/recipes"
@@ -59,21 +60,47 @@ type Meal struct {
 }
 
 func ToRecipe(m Meal) recipes.Recipe {
-	ingredients := make([]recipes.Ingredient, 20)
+	ingredients := make([]recipes.Ingredient, 0)
 	body, err := json.Marshal(m)
 	if err == nil {
 		var bagOfStrings map[string]string
 		if err := json.Unmarshal(body, &bagOfStrings); err == nil {
 			for i := 1; i <= 20; i++ {
-				name := bagOfStrings[fmt.Sprintf("strIngredient%d", i)]
-				measurement := bagOfStrings[fmt.Sprintf("strMeasure%d", i)]
-				if strings.TrimSpace(name) == "" {
+				name := strings.TrimSpace(bagOfStrings[fmt.Sprintf("strIngredient%d", i)])
+				measurement := strings.TrimSpace(bagOfStrings[fmt.Sprintf("strMeasure%d", i)])
+				if name == "" {
 					continue
 				}
-				ingredients[i-1] = recipes.Ingredient{
-					Name:        name,
-					Measurement: strings.TrimSpace(measurement),
+				amount := float32(1.0)
+				if measurement == "To taste" || measurement == "To serve" {
+					measurement = "whole"
+				} else {
+					parts := strings.SplitAfterN(measurement, " ", 2)
+					value, err := strconv.Atoi(parts[0])
+					if err == nil {
+						amount = float32(value)
+					} else if parts[0] == "½" {
+						amount = 0.5
+					} else if strings.Contains(parts[0], "/") {
+						n := strings.Split(parts[0], "/")
+						numerator, nerr := strconv.Atoi(n[0])
+						denominator, derr := strconv.Atoi(n[1])
+						if nerr == nil && derr == nil {
+							amount = float32(numerator) / float32(denominator)
+						}
+					}
+					if len(parts) >= 2 {
+						measurement = parts[1]
+					} else {
+						measurement = "whole"
+					}
 				}
+
+				ingredients = append(ingredients, recipes.Ingredient{
+					Name:        name,
+					Amount:      amount,
+					Measurement: measurement,
+				})
 			}
 		}
 	}
