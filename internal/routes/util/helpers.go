@@ -141,6 +141,10 @@ func SerializeResponseNoContent(err error) (events.APIGatewayV2HTTPResponse, err
 	}, nil
 }
 
+func IdentityThunk[I interface{}](input I) I {
+	return input
+}
+
 func ConvertQueryResults[D interface{}, R interface{}](items data.QueryResults[D], thunk func(D) R) data.QueryResults[R] {
 	if items.Items != nil {
 		newItems := make([]R, len(items.Items))
