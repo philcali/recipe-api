@@ -56,6 +56,7 @@ func JWTAuthThunk(ctx context.Context, apiToken string) (*events.APIGatewayV2Cus
 				string(data.SETTINGS_WRITE),
 				string(data.AUDIT_WRITE),
 				string(data.SHARE_WRITE),
+				string(data.PROVIDER_WRITE),
 			},
 		},
 	}, nil
